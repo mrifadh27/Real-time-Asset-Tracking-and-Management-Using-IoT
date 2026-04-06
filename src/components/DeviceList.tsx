@@ -9,10 +9,10 @@ interface DeviceListProps {
 }
 
 export const DeviceList = ({ devices, loading, selectedId, onSelect }: DeviceListProps) => {
-  if (loading) return <div className="p-4 text-sm text-slate-400">Loading telemetry stream...</div>;
+  if (loading) return <div className="p-4 text-sm text-slate-400">Connecting to realtime telemetry stream...</div>;
 
   if (devices.length === 0) {
-    return <div className="p-4 text-sm text-slate-400">No devices found. Check Firebase or fallback data.</div>;
+    return <div className="p-4 text-sm text-slate-400">No devices in <code>/assets</code> yet. Publish from firmware to see live data.</div>;
   }
 
   return (

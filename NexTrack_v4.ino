@@ -64,8 +64,10 @@
 #define WIFI_SSID       "MrTecno"
 #define WIFI_PASSWORD   "00000000"
 
-// Firebase (must match index.html exactly)
+// Firebase Realtime Database host (without https://)
 #define FIREBASE_HOST   "realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app"
+// Optional: database auth token/secret if your DB rules require auth
+#define FIREBASE_AUTH_TOKEN ""
 
 // Device identity (change per unit)
 #define DEVICE_ID       "tracker_01"
@@ -572,7 +574,9 @@ void buildPayload(String& payload, bool heartbeatOnly, bool offline, unsigned lo
     if (vehicleState == STATE_MOVING) stateStr = "moving";
     else if (vehicleState == STATE_IDLE) stateStr = "idle";
     doc["vehicleState"] = stateStr;
-    doc["ts"] = (ts > 0) ? (long)ts : (long)millis();
+    const long stamp = (ts > 0) ? (long)ts : (long)millis();
+    doc["ts"] = stamp;
+    doc["updatedAt"] = stamp;
   }
 
   serializeJson(doc, payload);
@@ -595,6 +599,7 @@ bool sendToFirebase(bool heartbeatOnly) {
   buildPayload(payload, heartbeatOnly, false, 0);
 
   String path = String("/assets/") + DEVICE_ID + ".json";
+  if (strlen(FIREBASE_AUTH_TOKEN) > 0) path += String("?auth=") + FIREBASE_AUTH_TOKEN;
   String req  = "PATCH " + path + " HTTP/1.1\r\n"
                 "Host: " + FIREBASE_HOST + "\r\n"
                 "Content-Type: application/json\r\n"

@@ -3,6 +3,7 @@ import type { ViewKey } from '@/types';
 interface NavbarProps {
   view: ViewKey;
   onChange: (view: ViewKey) => void;
+  isConnected: boolean;
 }
 
 const tabs: { key: ViewKey; label: string }[] = [
@@ -12,11 +13,14 @@ const tabs: { key: ViewKey; label: string }[] = [
   { key: 'settings', label: 'Settings' },
 ];
 
-export const Navbar = ({ view, onChange }: NavbarProps) => (
+export const Navbar = ({ view, onChange, isConnected }: NavbarProps) => (
   <header className="border-b border-border bg-slate-900/80 px-5 py-3 backdrop-blur">
     <div className="flex items-center gap-3">
-      <h1 className="text-xl font-bold text-cyan-300">NexTrack v6</h1>
-      <span className="text-xs text-slate-400">Production-ready IoT Dashboard</span>
+      <h1 className="text-xl font-bold text-cyan-300">NexTrack Live</h1>
+      <span className="text-xs text-slate-400">ESP32 + SIM808 + MPU6050 Realtime Control Center</span>
+      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${isConnected ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+        {isConnected ? 'Firebase Connected' : 'Connection Required'}
+      </span>
       <nav className="ml-auto flex gap-2">
         {tabs.map((tab) => (
           <button

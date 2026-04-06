@@ -1,41 +1,15 @@
-# NexTrack v6 - Real-time Asset Tracking Dashboard
+# NexTrack Live - Real-time Asset Tracking Dashboard
 
-Production-ready frontend refactor for an IoT asset tracking dashboard using **Vite + React + TypeScript + Tailwind + Leaflet/OpenStreetMap**.
+Realtime IoT dashboard for **ESP32 + SIM808 + MPU6050** using **Vite + React + TypeScript + Tailwind + Leaflet/OpenStreetMap** and **Firebase Realtime Database**.
 
-## ✅ What was upgraded
+## ✅ Current behavior
 
-- Clean architecture with dedicated folders:
-  - `src/components`
-  - `src/pages`
-  - `src/services`
-  - `src/hooks`
-  - `src/utils`
-  - `src/styles`
-- `index.html` is now minimal (only root mount + module entry).
-- Professional map system built on OpenStreetMap with:
-  - Autocomplete location search
-  - Place suggestions
-  - Smooth fly-to navigation
-  - Marker placement for selected place
-  - Reverse geocoding label
-- Firebase-ready service layer (`gpsService`, `firebase.ts`) with fallback to mock data.
-- Reusable components (`Navbar`, `Sidebar`, `MapView`, `DeviceList`, `DeviceCard`, `AlertsPanel`).
-- Strong typing and modular ES imports/exports.
+- Reads only real data from Firebase (`/assets` path).
+- No mock, demo, or generated fallback telemetry.
+- Live map markers, asset cards, alerts, and analytics update from the realtime stream.
+- Connection status is visible in the navbar and sidebar.
 
-## 🧱 Project Structure
-
-```bash
-src/
-  components/
-  hooks/
-  pages/
-  services/
-  styles/
-  types/
-  utils/
-```
-
-## ⚙️ Run the project now
+## ⚙️ Run the project
 
 ```bash
 npm install
@@ -44,15 +18,15 @@ npm run dev
 
 Then open the URL shown by Vite (typically `http://localhost:5173`).
 
-## 🔌 Firebase setup (optional)
+## 🔌 Firebase setup
 
 1. Copy `.env.example` to `.env`.
-2. Fill your Firebase config variables.
+2. Keep the Firebase values for your project.
 3. Restart `npm run dev`.
 
-If Firebase config is missing, the dashboard runs with realistic mock telemetry so the UI is fully usable.
+If variables are missing, the app now shows a clear configuration error instead of fake data.
 
-## 🏗️ Build for production
+## 🏗️ Build
 
 ```bash
 npm run build

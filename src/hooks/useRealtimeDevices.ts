@@ -1,33 +1,37 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Device } from '@/types';
 import { gpsService } from '@/services/gpsService';
-import { mockDataService } from '@/services/mockDataService';
+import { firebaseConfigError } from '@/services/firebase';
 
 export const useRealtimeDevices = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(firebaseConfigError);
 
   useEffect(() => {
-    const unsubscribe = gpsService.subscribe((payload) => {
-      if (payload.length === 0) {
-        setDevices(mockDataService.getDevices());
-      } else {
-        setDevices(payload);
-      }
+    if (firebaseConfigError) {
       setLoading(false);
-    });
+      return () => undefined;
+    }
 
-    const interval = window.setInterval(() => {
-      setDevices((prev) => (prev.length > 0 ? mockDataService.getDevices().map((d, i) => ({ ...d, id: prev[i]?.id ?? d.id })) : prev));
-    }, 6000);
+    const unsubscribe = gpsService.subscribe({
+      onData: (payload) => {
+        setDevices(payload);
+        setError(null);
+        setLoading(false);
+      },
+      onError: (message) => {
+        setError(`Realtime subscription failed: ${message}`);
+        setLoading(false);
+      },
+    });
 
     return () => {
       unsubscribe();
-      window.clearInterval(interval);
     };
   }, []);
 
   const selected = useMemo(() => devices[0] ?? null, [devices]);
 
-  return { devices, selected, loading };
+  return { devices, selected, loading, error };
 };

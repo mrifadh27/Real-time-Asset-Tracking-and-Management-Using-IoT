@@ -8,10 +8,14 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
 };
 
-const hasFirebaseConfig = Boolean(
-  firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.databaseURL && firebaseConfig.projectId,
-);
+const missingFields = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
 
-export const app = hasFirebaseConfig ? initializeApp(firebaseConfig) : null;
-export const database = app ? getDatabase(app) : null;
-export const isFirebaseConfigured = hasFirebaseConfig;
+export const isFirebaseConfigured = missingFields.length === 0;
+export const firebaseConfigError = isFirebaseConfigured
+  ? null
+  : `Missing Firebase environment variables: ${missingFields.join(', ')}`;
+
+export const app = initializeApp(firebaseConfig);
+export const database = getDatabase(app);

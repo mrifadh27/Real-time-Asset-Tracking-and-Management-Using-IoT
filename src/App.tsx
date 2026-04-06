@@ -12,7 +12,7 @@ import type { ViewKey } from '@/types';
 const App = () => {
   const [view, setView] = useState<ViewKey>('dashboard');
   const [selectedId, setSelectedId] = useState<string | undefined>();
-  const { devices, loading } = useRealtimeDevices();
+  const { devices, loading, error } = useRealtimeDevices();
 
   const selectedDevice = useMemo(
     () => devices.find((device) => device.id === selectedId) ?? devices[0] ?? null,
@@ -23,19 +23,20 @@ const App = () => {
 
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
-      <Navbar view={view} onChange={setView} />
+      <Navbar view={view} onChange={setView} isConnected={!error && devices.length > 0} />
       <div className="grid min-h-0 flex-1 grid-cols-[320px_1fr]">
         <Sidebar
           devices={devices}
           loading={loading}
+          error={error}
           selectedId={selectedDevice?.id}
           onSelect={setSelectedId}
         />
         <main className="min-h-0 overflow-auto bg-slate-950">
-          {view === 'dashboard' && <DashboardPage devices={devices} selectedDevice={selectedDevice} />}
+          {view === 'dashboard' && <DashboardPage devices={devices} selectedDevice={selectedDevice} error={error} />}
           {view === 'analytics' && <AnalyticsPage devices={devices} />}
           {view === 'alerts' && <AlertsPage alerts={alerts} />}
-          {view === 'settings' && <SettingsPage />}
+          {view === 'settings' && <SettingsPage error={error} />}
         </main>
       </div>
     </div>
