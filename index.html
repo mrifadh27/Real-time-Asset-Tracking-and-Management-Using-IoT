@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NexTrack v4 — Smart Asset Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+:root {
+  --accent:#00E5FF; --accent-alt:#FF6B35; --danger:#FF3B5C;
+  --warning:#FFB800; --success:#00D97E; --online:#00D97E;
+  --offline:#FF3B5C; --idle:#FFB800;
+  --font-head:'Syne',sans-serif; --font-body:'DM Sans',sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --r-sm:6px; --r-md:12px; --r-lg:20px;
+  --tr:0.25s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="dark"]{
+  --bg:#080C12; --bg-s:#0E1520; --bg-c:#111927; --bg-h:#162032;
+  --border:rgba(255,255,255,.07); --border-a:rgba(0,229,255,.25);
+  --t1:#F0F4FF; --t2:#7A8FAD; --t3:#3E5068;
+  --sidebar:#09101A; --shadow:0 8px 32px rgba(0,0,0,.5);
+  --map-f:brightness(.85) saturate(.8);
+}
+[data-theme="light"]{
+  --bg:#F0F4FA; --bg-s:#FFF; --bg-c:#FFF; --bg-h:#F5F8FF;
+  --border:rgba(0,0,0,.08); --border-a:rgba(0,150,200,.3);
+  --t1:#0D1B2A; --t2:#4A6080; --t3:#9DB0C5;
+  --sidebar:#FFF; --shadow:0 4px 20px rgba(0,0,0,.08);
+  --map-f:none;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:var(--t1);font-size:14px;overflow:hidden}
+#app{display:flex;height:100vh;overflow:hidden}
+.layout{display:flex;width:100%;height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{width:240px;min-width:240px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:10}
+.logo{padding:24px 20px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.logo-mark{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#0066FF);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,229,255,.25)}
+.brand{font-family:var(--font-head);font-size:18px;font-weight:800}.brand span{color:var(--accent)}
+.brand-ver{font-size:9px;color:var(--t3);font-family:var(--font-mono);letter-spacing:1px;margin-top:1px}
+.sec-label{padding:16px 20px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3)}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;color:var(--t2);font-size:13.5px;font-weight:500;transition:all var(--tr);margin:1px 8px;border-radius:var(--r-sm);position:relative}
+.nav-item:hover{background:var(--bg-h);color:var(--t1)}
+.nav-item.active{background:rgba(0,229,255,.08);color:var(--accent);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;background:var(--accent);border-radius:0 3px 3px 0;margin-left:-8px}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;line-height:1.4}
+.device-list{padding:4px 8px;flex:1;overflow-y:auto}
+.dev-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;transition:all var(--tr);margin-bottom:2px}
+.dev-item:hover{background:var(--bg-h)}.dev-item.selected{background:rgba(0,229,255,.08)}
+.dev-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dev-dot.online{background:var(--online);box-shadow:0 0 6px var(--online)}
+.dev-dot.offline{background:var(--offline)}.dev-dot.idle{background:var(--idle)}
+.dev-info{flex:1;min-width:0}
+.dev-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-sub{font-size:11px;color:var(--t3);font-family:var(--font-mono)}
+.dev-gf-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--t3);padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;transition:all var(--tr)}
+.dev-gf-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sidebar-footer{padding:16px;border-top:1px solid var(--border)}
+.user-row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r-sm)}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#0066FF);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#000;flex-shrink:0}
+.user-email{font-size:12px;color:var(--t2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:60px;padding:0 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border);background:var(--bg-s);flex-shrink:0}
+.tb-title{font-family:var(--font-head);font-size:17px;font-weight:700}
+.tb-sub{font-size:12px;color:var(--t3);font-family:var(--font-mono)}
+.tb-space{flex:1}
+.status-pill{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--bg-c);border:1px solid var(--border);border-radius:99px;font-size:12px;font-weight:500}
+.status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+.status-pill .dot.offline-dot{background:var(--danger);animation:none}
+.btn-icon{background:none;border:1px solid var(--border);color:var(--t2);border-radius:var(--r-sm);width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all var(--tr)}
+.btn-icon:hover{background:var(--bg-h);color:var(--t1)}
+.theme-btn{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 12px;color:var(--t2);cursor:pointer;font-size:13px;font-family:var(--font-body);transition:all var(--tr)}
+.theme-btn:hover{color:var(--t1);background:var(--bg-h)}
+
+/* ── PAGE SECTIONS ── */
+.page{display:none;flex:1;overflow-y:auto;overflow-x:hidden}
+.page.active{display:flex;flex-direction:column}
+
+/* ── DASHBOARD ── */
+.dash-split{display:grid;grid-template-columns:1fr 380px;height:calc(100vh - 60px);overflow:hidden}
+.map-wrap{position:relative;overflow:hidden}
+#map{width:100%;height:100%;filter:var(--map-f)}
+.map-ctrls{position:absolute;top:16px;left:16px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.map-btn{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 14px;color:var(--t1);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--tr);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px}
+.map-btn:hover{background:var(--bg-h);border-color:var(--accent)}
+.map-btn.active{background:rgba(0,229,255,.1);border-color:var(--accent);color:var(--accent)}
+.geofence-info{position:absolute;bottom:16px;left:16px;z-index:500;background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;font-size:12px;backdrop-filter:blur(8px);display:none;max-width:220px;line-height:1.7}
+.draw-hint{position:absolute;bottom:16px;right:16px;z-index:500;background:var(--bg-c);border:1px solid var(--accent);border-radius:var(--r-md);padding:10px 14px;font-size:12px;color:var(--accent);display:none;backdrop-filter:blur(8px)}
+.right-panel{border-left:1px solid var(--border);background:var(--bg-s);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.panel-sec{padding:20px;border-bottom:1px solid var(--border)}
+.panel-sec:last-child{border-bottom:none}
+.sec-head{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric-card{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;transition:border-color var(--tr)}
+.metric-card:hover{border-color:var(--border-a)}
+.m-label{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.m-val{font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--t1);line-height:1}
+.m-val .unit{font-size:12px;color:var(--t2);font-weight:400;margin-left:3px}
+.m-change{font-size:11px;margin-top:4px;display:flex;align-items:center;gap:4px}
+.m-change.up{color:var(--success)}.m-change.down{color:var(--danger)}.m-change.neutral{color:var(--t3)}
+.dev-status-card{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-bottom:10px}
+.dev-status-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.status-badge{padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-left:auto}
+.status-badge.online{background:rgba(0,217,126,.15);color:var(--online)}
+.status-badge.offline{background:rgba(255,59,92,.15);color:var(--offline)}
+.status-badge.idle{background:rgba(255,184,0,.15);color:var(--idle)}
+.coord-row{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11.5px;color:var(--t2);margin-bottom:4px}
+.coord-val{color:var(--t1);font-weight:500}
+.mini-chart-wrap{height:80px;margin-top:8px;position:relative}
+.playback-wrap{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:14px}
+.pb-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.pb-btn{background:none;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all var(--tr);flex-shrink:0}
+.pb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pb-btn.active{background:rgba(0,229,255,.1);border-color:var(--accent);color:var(--accent)}
+.pb-slider{flex:1;-webkit-appearance:none;appearance:none;height:4px;background:var(--border);border-radius:99px;outline:none;cursor:pointer}
+.pb-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 6px rgba(0,229,255,.5)}
+.pb-speed{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);font-family:var(--font-mono);font-size:12px;padding:4px 8px;cursor:pointer;outline:none}
+.pb-info{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);font-family:var(--font-mono)}
+
+/* ── ROUTE/DESTINATION PANEL ── */
+.route-panel{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:14px}
+.dest-search-wrap{position:relative;margin-bottom:10px}
+.dest-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);font-family:var(--font-body);font-size:13px;padding:9px 12px;outline:none;transition:border-color var(--tr)}
+.dest-input:focus{border-color:var(--accent)}
+.dest-suggestions{position:absolute;top:100%;left:0;right:0;background:var(--bg-c);border:1px solid var(--border-a);border-radius:var(--r-sm);z-index:600;max-height:180px;overflow-y:auto;box-shadow:var(--shadow);display:none}
+.dest-sug-item{padding:10px 12px;font-size:12.5px;cursor:pointer;border-bottom:1px solid var(--border);transition:background var(--tr);line-height:1.4}
+.dest-sug-item:last-child{border-bottom:none}
+.dest-sug-item:hover{background:var(--bg-h);color:var(--accent)}
+.dest-sug-item b{color:var(--t1)}
+.dest-sug-item small{color:var(--t3)}
+.route-meta{display:flex;gap:10px;font-size:12px;font-family:var(--font-mono);color:var(--t2);flex-wrap:wrap}
+.route-meta span{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 8px}
+.route-meta span b{color:var(--t1)}
+.route-btn-row{display:flex;gap:8px;margin-top:10px}
+.route-btn{flex:1;padding:8px;background:linear-gradient(135deg,var(--accent),#0066FF);border:none;border-radius:var(--r-sm);color:#000;font-family:var(--font-head);font-size:12px;font-weight:700;cursor:pointer;transition:opacity var(--tr)}
+.route-btn:hover{opacity:.85}
+.route-btn.danger-btn{background:linear-gradient(135deg,var(--danger),#c0002f)}
+.route-btn.danger-btn{color:#fff}
+
+/* ── OFFLINE BANNER ── */
+.offline-banner{display:none;background:rgba(255,59,92,.12);border:1px solid rgba(255,59,92,.3);color:var(--danger);padding:8px 20px;font-size:12px;font-weight:600;text-align:center;letter-spacing:.3px}
+.offline-banner.show{display:block}
+.offline-sync-bar{display:none;background:rgba(255,184,0,.1);border-bottom:1px solid rgba(255,184,0,.25);padding:6px 20px;font-size:12px;color:var(--warning);text-align:center;font-weight:600}
+.offline-sync-bar.show{display:block}
+
+/* ── ANALYTICS ── */
+.analytics-pg{padding:24px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto;gap:20px}
+.chart-card{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px}
+.chart-card.full{grid-column:1/-1}
+.chart-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.chart-title{font-family:var(--font-head);font-size:15px;font-weight:700}
+.chart-sub{font-size:12px;color:var(--t3);margin-top:2px}
+.chart-wrap{position:relative;height:180px}
+.chart-wrap.tall{height:240px}
+.stats-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.stat-card{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;bottom:0;right:0;width:80px;height:80px;border-radius:50%;opacity:.04}
+.stat-card.accent::after{background:var(--accent)}.stat-card.danger::after{background:var(--danger)}
+.stat-card.success::after{background:var(--success)}.stat-card.warning::after{background:var(--warning)}
+.stat-icon{font-size:20px;margin-bottom:12px}
+.stat-number{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1}
+.stat-label{font-size:12px;color:var(--t2);margin-top:6px}
+
+/* ── ALERTS (no theft/accident buttons visible, filtered) ── */
+.alerts-pg{padding:24px;max-width:900px}
+.alert-filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.filter-btn{padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:var(--bg-c);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;transition:all var(--tr)}
+.filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.06)}
+.alert-list{display:flex;flex-direction:column;gap:10px}
+.alert-item{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;display:flex;align-items:flex-start;gap:14px;animation:slideIn .3s ease;transition:border-color var(--tr)}
+.alert-item:hover{border-color:var(--border-a)}
+.alert-icon{width:38px;height:38px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.alert-icon.offline{background:rgba(122,143,173,.12)}.alert-icon.geofence{background:rgba(0,229,255,.12)}
+.alert-icon.speed{background:rgba(255,107,53,.12)}.alert-icon.sync{background:rgba(0,217,126,.12)}
+.alert-body{flex:1}
+.alert-title{font-size:13.5px;font-weight:600;margin-bottom:2px}
+.alert-meta{font-size:11.5px;color:var(--t2);display:flex;gap:12px;flex-wrap:wrap}
+.alert-badge{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-left:auto;flex-shrink:0;align-self:flex-start}
+.alert-badge.offline{background:rgba(122,143,173,.15);color:var(--t2)}
+.alert-badge.geofence{background:rgba(0,229,255,.15);color:var(--accent)}
+.alert-badge.speed{background:rgba(255,107,53,.15);color:var(--accent-alt)}
+.alert-badge.sync{background:rgba(0,217,126,.15);color:var(--success)}
+
+/* ── SETTINGS ── */
+.settings-pg{padding:24px;max-width:760px}
+.settings-sec{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-bottom:20px}
+.settings-sec-hdr{padding:16px 20px;border-bottom:1px solid var(--border);font-family:var(--font-head);font-size:14px;font-weight:700;display:flex;align-items:center;gap:10px}
+.settings-row{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.settings-label{font-size:13.5px;font-weight:500}
+.settings-desc{font-size:12px;color:var(--t3);margin-top:2px}
+.settings-input{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);font-family:var(--font-mono);font-size:13px;padding:8px 12px;width:200px;outline:none}
+.settings-input:focus{border-color:var(--accent)}
+.toggle{width:40px;height:22px;border-radius:99px;background:var(--border);position:relative;cursor:pointer;transition:background var(--tr);flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:white;transition:transform var(--tr)}
+.toggle.on::after{transform:translateX(18px)}
+.btn-save{padding:12px 40px;background:linear-gradient(135deg,var(--accent),#0066FF);border:none;border-radius:99px;color:#000;font-family:var(--font-head);font-size:15px;font-weight:700;cursor:pointer;transition:opacity var(--tr),transform var(--tr);margin-top:8px}
+.btn-save:hover{opacity:.9;transform:translateY(-1px)}
+/* Per-device geofence table */
+.gf-device-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.gf-device-table th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);border-bottom:1px solid var(--border)}
+.gf-device-table td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+.gf-device-table tr:last-child td{border-bottom:none}
+.gf-input-sm{background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-family:var(--font-mono);font-size:12px;padding:5px 8px;width:90px;outline:none}
+.gf-input-sm:focus{border-color:var(--accent)}
+.gf-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:rgba(0,229,255,.1);color:var(--accent)}
+
+/* ── TOAST ── */
+#toasts{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--shadow);font-size:13px;font-weight:500;min-width:280px;animation:slideInRight .3s ease;backdrop-filter:blur(8px)}
+.toast.danger{border-left:3px solid var(--danger)}.toast.warning{border-left:3px solid var(--warning)}
+.toast.success{border-left:3px solid var(--success)}.toast.info{border-left:3px solid var(--accent)}
+
+/* ── OFFLINE STORE INDICATOR ── */
+.offline-store-pill{background:rgba(255,184,0,.1);border:1px solid rgba(255,184,0,.3);border-radius:99px;padding:4px 10px;font-size:11px;color:var(--warning);font-weight:600;display:none}
+.offline-store-pill.show{display:inline-flex;align-items:center;gap:5px}
+
+/* ── EMPTY STATE ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--t3);gap:12px}
+.empty-state .icon{font-size:36px}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+
+/* ── MISC ── */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+[data-theme="dark"] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) saturate(.75)}
+@media(max-width:1200px){.dash-split{grid-template-columns:1fr 340px}}
+@media(max-width:900px){.sidebar{width:200px;min-width:200px}.dash-split{grid-template-columns:1fr 300px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="layout">
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-mark">📍</div>
+        <div>
+          <div class="brand">Nex<span>Track</span></div>
+          <div class="brand-ver">v4.0 · PRODUCTION</div>
+        </div>
+      </div>
+      <div class="sec-label">Navigation</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard',this)">
+        <span class="nav-icon">🗺️</span> Live Map
+      </div>
+      <div class="nav-item" id="nav-analytics" onclick="showPage('analytics',this)">
+        <span class="nav-icon">📊</span> Analytics
+      </div>
+      <div class="nav-item" id="nav-alerts" onclick="showPage('alerts',this)">
+        <span class="nav-icon">🔔</span> Alerts
+        <span class="nav-badge" id="alert-badge" style="display:none">0</span>
+      </div>
+      <div class="nav-item" id="nav-settings" onclick="showPage('settings',this)">
+        <span class="nav-icon">⚙️</span> Settings
+      </div>
+      <div class="sec-label">Devices</div>
+      <div class="device-list" id="device-list">
+        <div class="empty-state" style="padding:24px 12px">
+          <div class="icon" style="font-size:24px">📡</div>
+          <p style="font-size:11px;text-align:center">Waiting for devices...</p>
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-row">
+          <div class="avatar">N</div>
+          <div class="user-email" id="last-sync">⏱ --:--:--</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <div class="main">
+      <!-- TOP BAR -->
+      <div class="topbar">
+        <div>
+          <div class="tb-title" id="tb-title">Live Map</div>
+          <div class="tb-sub" id="tb-sub">Real-time asset tracking</div>
+        </div>
+        <div class="tb-space"></div>
+        <div class="offline-store-pill" id="offline-store-pill">💾 <span id="offline-store-count">0</span> queued</div>
+        <div class="status-pill"><div class="dot" id="fb-dot"></div><span id="fb-status">Connected</span></div>
+        <button class="theme-btn" onclick="toggleTheme()">🌓 Theme</button>
+      </div>
+
+      <!-- ─── DASHBOARD ─── -->
+      <section class="page active" id="page-dashboard">
+        <div class="offline-banner" id="offline-banner">⚠️ GPS signal lost — last known position shown. Offline mode active.</div>
+        <div class="offline-sync-bar" id="offline-sync-bar">🔄 Syncing offline data to server...</div>
+        <div class="dash-split">
+          <div class="map-wrap">
+            <div id="map"></div>
+            <div class="map-ctrls">
+              <button class="map-btn" onclick="fitAllDevices()">🔍 Fit All</button>
+              <button class="map-btn" id="geofence-btn" onclick="toggleGeofenceDraw()">📐 Set Geofence</button>
+              <button class="map-btn" id="route-clear-btn" onclick="clearRoute()" style="display:none;color:var(--danger)">✕ Clear Route</button>
+            </div>
+            <div class="geofence-info" id="geofence-info"></div>
+            <div class="draw-hint" id="draw-hint">📌 Click on map to place geofence center</div>
+          </div>
+
+          <!-- RIGHT PANEL -->
+          <div class="right-panel">
+            <div class="panel-sec">
+              <div class="sec-head">📡 Active Device</div>
+              <div class="dev-status-card" id="active-card">
+                <div class="dev-status-hdr">
+                  <div style="font-weight:700;font-size:15px;font-family:var(--font-head)" id="active-name">Select a device</div>
+                  <div class="status-badge offline" id="active-status">OFFLINE</div>
+                </div>
+                <div class="coord-row"><span>Latitude</span><span class="coord-val" id="active-lat">--</span></div>
+                <div class="coord-row"><span>Longitude</span><span class="coord-val" id="active-lng">--</span></div>
+                <div class="coord-row"><span>Altitude</span><span class="coord-val" id="active-alt">-- m</span></div>
+                <div class="coord-row"><span>HDOP</span><span class="coord-val" id="active-hdop">--</span></div>
+                <div class="coord-row"><span>IMU Accel</span><span class="coord-val" id="active-accel">--</span></div>
+              </div>
+            </div>
+
+            <div class="panel-sec">
+              <div class="sec-head">⚡ Live Metrics</div>
+              <div class="metric-grid">
+                <div class="metric-card">
+                  <div class="m-label">Speed</div>
+                  <div class="m-val" id="m-speed">0<span class="unit">km/h</span></div>
+                  <div class="m-change neutral" id="m-speed-ch">Calculating...</div>
+                </div>
+                <div class="metric-card">
+                  <div class="m-label">Distance</div>
+                  <div class="m-val" id="m-dist">0<span class="unit">km</span></div>
+                  <div class="m-change neutral">Today</div>
+                </div>
+                <div class="metric-card">
+                  <div class="m-label">Trip Time</div>
+                  <div class="m-val" id="m-time">0<span class="unit">min</span></div>
+                  <div class="m-change neutral">Since start</div>
+                </div>
+                <div class="metric-card">
+                  <div class="m-label">Satellites</div>
+                  <div class="m-val" id="m-sats">0</div>
+                  <div class="m-change neutral" id="m-gps-mode">GPS lock</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ROUTE & DESTINATION — NEW FEATURE #1 -->
+            <div class="panel-sec" id="route-section">
+              <div class="sec-head">🧭 Route to Destination</div>
+              <div class="route-panel">
+                <div class="dest-search-wrap">
+                  <input type="text" class="dest-input" id="dest-input" placeholder="Search destination…" autocomplete="off"
+                    oninput="onDestInput(this.value)" onkeydown="onDestKey(event)"/>
+                  <div class="dest-suggestions" id="dest-suggestions"></div>
+                </div>
+                <div class="route-meta" id="route-meta" style="display:none">
+                  <span>📏 <b id="route-dist-val">--</b> km</span>
+                  <span>⏱ <b id="route-eta-val">--</b> min</span>
+                  <span id="route-progress-badge" style="display:none">✅ <b id="route-pct-val">0</b>% done</span>
+                </div>
+                <div class="route-btn-row">
+                  <button class="route-btn" onclick="startRouteToDestination()">▶ Get Route</button>
+                  <button class="route-btn danger-btn" onclick="clearRoute()" id="clear-route-btn" style="display:none">✕ Clear</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-sec">
+              <div class="sec-head">📈 Speed Timeline</div>
+              <div class="mini-chart-wrap"><canvas id="mini-speed-chart"></canvas></div>
+            </div>
+
+            <div class="panel-sec" id="playback-panel">
+              <div class="sec-head">🎬 Route Playback</div>
+              <div class="playback-wrap">
+                <div class="pb-bar">
+                  <button class="pb-btn" onclick="pbRewind()" title="Rewind">⏮</button>
+                  <button class="pb-btn" id="pb-play-btn" onclick="pbToggle()" title="Play/Pause">▶</button>
+                  <input type="range" class="pb-slider" id="pb-slider" min="0" max="100" value="0" oninput="pbSeek(this.value)"/>
+                  <select class="pb-speed" id="pb-speed-sel">
+                    <option value="1">1×</option><option value="2">2×</option>
+                    <option value="5">5×</option><option value="10">10×</option>
+                  </select>
+                </div>
+                <div class="pb-info">
+                  <span id="pb-cur">0%</span>
+                  <span id="pb-total">-- pts</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── ANALYTICS ─── -->
+      <section class="page" id="page-analytics">
+        <div class="analytics-pg">
+          <div class="stats-row">
+            <div class="stat-card accent"><div class="stat-icon">📍</div><div class="stat-number" id="stat-devices">0</div><div class="stat-label">Active Devices</div></div>
+            <div class="stat-card success"><div class="stat-icon">🛣️</div><div class="stat-number" id="stat-distance">0 km</div><div class="stat-label">Total Distance Today</div></div>
+            <div class="stat-card warning"><div class="stat-icon">⚡</div><div class="stat-number" id="stat-maxspeed">0</div><div class="stat-label">Max Speed (km/h)</div></div>
+            <div class="stat-card danger"><div class="stat-icon">🔔</div><div class="stat-number" id="stat-alerts">0</div><div class="stat-label">Alerts Today</div></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-hdr"><div><div class="chart-title">Speed Over Time</div><div class="chart-sub">km/h — last 20 readings</div></div></div>
+            <div class="chart-wrap"><canvas id="speed-chart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-hdr"><div><div class="chart-title">Movement Activity</div><div class="chart-sub">Updates per minute (last 12 min)</div></div></div>
+            <div class="chart-wrap"><canvas id="activity-chart"></canvas></div>
+          </div>
+          <div class="chart-card full">
+            <div class="chart-hdr"><div><div class="chart-title">Distance Per Device</div><div class="chart-sub">Total km traveled</div></div></div>
+            <div class="chart-wrap"><canvas id="device-dist-chart"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── ALERTS (Theft & Accident removed per #2) ─── -->
+      <section class="page" id="page-alerts">
+        <div class="alerts-pg">
+          <div class="alert-filters">
+            <button class="filter-btn active" onclick="filterAlerts('all',this)">All</button>
+            <button class="filter-btn" onclick="filterAlerts('offline',this)">⚫ Offline</button>
+            <button class="filter-btn" onclick="filterAlerts('geofence',this)">🔵 Geofence</button>
+            <button class="filter-btn" onclick="filterAlerts('speed',this)">🟠 Overspeed</button>
+            <button class="filter-btn" onclick="filterAlerts('sync',this)">🟢 Sync</button>
+          </div>
+          <div class="alert-list" id="alert-list">
+            <div class="empty-state"><div class="icon">✅</div><p>No alerts yet. System monitoring active.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── SETTINGS ─── -->
+      <section class="page" id="page-settings">
+        <div class="settings-pg">
+
+          <!-- Per-device geofence — Feature #3 -->
+          <div class="settings-sec">
+            <div class="settings-sec-hdr">📐 Per-Device Geofence Configuration</div>
+            <div id="gf-device-rows" style="padding:12px 16px 0">
+              <p style="font-size:12px;color:var(--t3);padding-bottom:12px">Each device detected in the system can have its own geofence. Click <b>Set on Map</b> in the device list, or enter coordinates manually below.</p>
+              <table class="gf-device-table">
+                <thead><tr>
+                  <th>Device</th><th>Lat</th><th>Lng</th><th>Radius (m)</th><th>Active</th>
+                </tr></thead>
+                <tbody id="gf-table-body">
+                  <tr><td colspan="5" style="text-align:center;color:var(--t3);font-size:12px;padding:16px">No devices detected yet</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="padding:12px 16px 16px">
+              <button class="btn-save" style="font-size:13px;padding:9px 24px" onclick="saveAllGeofences()">💾 Save Geofences</button>
+            </div>
+          </div>
+
+          <div class="settings-sec">
+            <div class="settings-sec-hdr">🚨 Alert Thresholds</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Offline Timeout (s)</div><div class="settings-desc">Seconds before marking device offline</div></div>
+              <input type="number" class="settings-input" id="s-offline-t" value="30" min="5" max="300"/>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Overspeed Threshold (km/h)</div><div class="settings-desc">Alert when speed exceeds this value</div></div>
+              <input type="number" class="settings-input" id="s-speed-t" value="120" min="10" max="300"/>
+            </div>
+          </div>
+
+          <!-- Offline mode config — Feature #4 -->
+          <div class="settings-sec">
+            <div class="settings-sec-hdr">📴 Offline Mode</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Offline Mode</div><div class="settings-desc">Auto-switch when GPS signal lost</div></div>
+              <div class="toggle on" id="s-offline-toggle" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Queued Offline Records</div><div class="settings-desc">Data buffered since last connection</div></div>
+              <span style="font-family:var(--font-mono);font-size:13px;color:var(--warning)" id="offline-queue-count">0 records</span>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Auto-Sync on Reconnect</div><div class="settings-desc">Push offline data when connection restores</div></div>
+              <div class="toggle on" id="s-autosync-toggle" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Max Offline Buffer</div><div class="settings-desc">Max records stored offline (per device)</div></div>
+              <input type="number" class="settings-input" id="s-offline-buf" value="200" min="50" max="1000"/>
+            </div>
+          </div>
+
+          <div class="settings-sec">
+            <div class="settings-sec-hdr">📊 Display</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Dark Mode</div><div class="settings-desc">Toggle between light and dark theme</div></div>
+              <div class="toggle on" id="s-theme-toggle" onclick="toggleTheme(); this.classList.toggle('on')"></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Show Route Trail</div><div class="settings-desc">Draw movement trail on map</div></div>
+              <div class="toggle on" id="s-trail-toggle" onclick="this.classList.toggle('on'); applyTrailToggle()"></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">App Version</div><div class="settings-desc">NexTrack Platform</div></div>
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--t3)">v4.0.0</span>
+            </div>
+          </div>
+          <div style="text-align:center">
+            <button class="btn-save" onclick="saveSettings()">💾 Save Settings</button>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /main -->
+  </div><!-- /layout -->
+</div><!-- /app -->
+
+<div id="toasts"></div>
+
+<!-- ══════════════════════ JAVASCRIPT ══════════════════════ -->
+<script>
+/* ══════════════════════════════════════════════════════════
+   FIREBASE CONFIG
+══════════════════════════════════════════════════════════ */
+const FB_CONFIG = {
+  apiKey:      "AIzaSyAZiSKitF5KYCam6Lzmdc4pPlczLUQmQ_A",
+  authDomain:  "realtime-asset-tracking-e00df.firebaseapp.com",
+  databaseURL: "https://realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId:   "realtime-asset-tracking-e00df"
+};
+firebase.initializeApp(FB_CONFIG);
+const db = firebase.database();
+
+/* ══════════════════════════════════════════════════════════
+   APPLICATION STATE
+══════════════════════════════════════════════════════════ */
+const S = {
+  devices:       {},
+  selectedId:    null,
+  history:       {},
+  alerts:        [],
+  alertFilter:   'all',
+  alertUnread:   0,
+  totalAlerts:   0,
+  // Per-device geofences: { deviceId: { lat, lng, radius, active, circle } }
+  geofences:     {},
+  settings: {
+    offlineTimeout:  30,
+    speedThreshold:  120,
+    showTrail:       true,
+    offlineEnabled:  true,
+    autoSync:        true,
+    offlineBuffer:   200
+  },
+  playback: {
+    playing:  false,
+    index:    0,
+    route:    [],
+    marker:   null,
+    polyline: null,
+    timer:    null
+  },
+  offlineTimers:  {},
+  tripStart:      {},
+  maxSpeed:       {},
+  // Offline queue: { deviceId: [ {lat,lng,speed,accel,ts,satellites} ] }
+  offlineQueue:   {},
+  isOffline:      false,    // global connectivity flag
+  // Active navigation route
+  navRoute: {
+    destLat:   null,
+    destLng:   null,
+    destName:  '',
+    line:      null,        // traveled portion polyline (green)
+    lineFull:  null,        // remaining portion polyline (cyan dashed)
+    destMarker: null,
+    originPt:  null,
+    fullCoords: [],         // full OSRM route coords
+    totalDist:  0
+  }
+};
+
+const mapMarkers  = {};
+const trailLines  = {};
+const routePts    = {};
+
+/* ══════════════════════════════════════════════════════════
+   MAP INIT
+══════════════════════════════════════════════════════════ */
+const map = L.map('map', { center:[7.2906, 80.6337], zoom:13, zoomControl:false });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap', maxZoom:19
+}).addTo(map);
+L.control.zoom({ position:'bottomright' }).addTo(map);
+
+/* ══════════════════════════════════════════════════════════
+   CHART INSTANCES
+══════════════════════════════════════════════════════════ */
+let speedChart, activityChart, deviceDistChart, miniSpeedChart;
+
+function initCharts() {
+  const isDark  = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textCol = isDark ? '#7A8FAD' : '#4A6080';
+  const gridCol = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
+
+  speedChart = new Chart(document.getElementById('speed-chart'), {
+    type:'line',
+    data:{ labels:[], datasets:[{
+      label:'Speed km/h', data:[], borderColor:'#00E5FF',
+      backgroundColor:'rgba(0,229,255,0.08)', borderWidth:2,
+      fill:true, tension:0.4, pointRadius:2, pointBackgroundColor:'#00E5FF'
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:gridCol}, ticks:{color:textCol, maxTicksLimit:8} },
+        y:{ grid:{color:gridCol}, ticks:{color:textCol}, min:0,
+          title:{display:true, text:'km/h', color:textCol} }
+      }}
+  });
+
+  activityChart = new Chart(document.getElementById('activity-chart'), {
+    type:'bar',
+    data:{ labels:Array.from({length:12},(_,i)=>-(11-i)+'m'),
+      datasets:[{ data:Array(12).fill(0), backgroundColor:'rgba(0,229,255,0.35)',
+        borderColor:'rgba(0,229,255,0.7)', borderWidth:1, borderRadius:4 }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:400},
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:gridCol}, ticks:{color:textCol} },
+        y:{ grid:{color:gridCol}, ticks:{color:textCol}, min:0 }
+      }}
+  });
+
+  deviceDistChart = new Chart(document.getElementById('device-dist-chart'), {
+    type:'bar',
+    data:{ labels:[], datasets:[{
+      data:[], backgroundColor:['rgba(0,229,255,0.5)','rgba(255,107,53,0.5)',
+        'rgba(0,217,126,0.5)','rgba(255,184,0,0.5)','rgba(255,59,92,0.5)'],
+      borderRadius:6
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:400},
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:gridCol}, ticks:{color:textCol} },
+        y:{ grid:{color:gridCol}, ticks:{color:textCol}, min:0 }
+      }}
+  });
+
+  miniSpeedChart = new Chart(document.getElementById('mini-speed-chart'), {
+    type:'line',
+    data:{ labels:[], datasets:[{
+      data:[], borderColor:'#00E5FF', backgroundColor:'rgba(0,229,255,0.1)',
+      borderWidth:1.5, fill:true, tension:0.4, pointRadius:0
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:200},
+      plugins:{ legend:{display:false} },
+      scales:{ x:{display:false}, y:{display:false, min:0} }}
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   FIREBASE LISTENERS
+══════════════════════════════════════════════════════════ */
+function startListening() {
+  db.ref('/assets').on('value', snap => {
+    const data = snap.val() || {};
+    const now  = Date.now();
+    Object.entries(data).forEach(([id, d]) => processDevice(id, d, now));
+    renderDeviceList();
+    renderMarkers();
+    updateAnalytics();
+    document.getElementById('last-sync').textContent =
+      '⏱ ' + new Date().toLocaleTimeString();
+    setConnectionStatus(true);
+  }, err => {
+    console.error('Firebase error:', err);
+    setConnectionStatus(false);
+    showToast('danger', '❌ Firebase connection error: ' + err.message);
+  });
+
+  db.ref('/alerts').orderByChild('timestamp').limitToLast(100).on('value', snap => {
+    S.alerts = [];
+    snap.forEach(c => S.alerts.unshift({ id:c.key, ...c.val() }));
+    // Filter out theft & accident per requirement #2
+    S.alerts = S.alerts.filter(a => !['theft','accident'].includes(a.type));
+    S.alertUnread = S.alerts.filter(a => !a.read).length;
+    renderAlertList();
+    updateAlertBadge();
+  });
+
+  // Monitor connection state (Feature #4)
+  db.ref('.info/connected').on('value', snap => {
+    const connected = snap.val() === true;
+    setConnectionStatus(connected);
+    if (connected && S.isOffline) {
+      // Was offline, now reconnected → sync
+      S.isOffline = false;
+      syncOfflineQueue();
+    } else if (!connected) {
+      S.isOffline = true;
+    }
+  });
+}
+
+function setConnectionStatus(online) {
+  const dot = document.getElementById('fb-dot');
+  const lbl = document.getElementById('fb-status');
+  if (online) {
+    dot.className = 'dot';
+    lbl.textContent = 'Connected';
+  } else {
+    dot.className = 'dot offline-dot';
+    lbl.textContent = 'Offline';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   PROCESS DEVICE DATA
+══════════════════════════════════════════════════════════ */
+function processDevice(id, data, now) {
+  const prev = S.devices[id];
+
+  // Speed
+  let speed = 0;
+  if (data.speed !== undefined && parseFloat(data.speed) > 0) {
+    speed = parseFloat(data.speed);
+  } else if (prev && prev.lat && data.lat && data.lng) {
+    const dt = (now - (prev.lastUpdate || now - 1000)) / 1000;
+    if (dt > 0 && dt < 60) {
+      speed = (haversineM(prev.lat, prev.lng, data.lat, data.lng) / dt) * 3.6;
+      speed = Math.min(speed, 300);
+    }
+  }
+
+  // Distance
+  let addDist = 0;
+  if (prev && prev.lat && data.lat && data.lng) {
+    const d = haversineKm(prev.lat, prev.lng, data.lat, data.lng);
+    if (d < 0.5) addDist = d;
+  }
+  const totalDist = ((prev && prev.totalDist) || 0) + addDist;
+
+  if (!S.tripStart[id]) S.tripStart[id] = now;
+  if (!S.maxSpeed[id] || speed > S.maxSpeed[id]) S.maxSpeed[id] = speed;
+
+  // Overspeed alert (replaces accident/crash alerts — Feature #2)
+  if (speed > S.settings.speedThreshold && speed > 5) {
+    fireAlert(id, 'speed', `Overspeed: ${speed.toFixed(1)} km/h`);
+  }
+
+  // GPS signal detection for offline mode (Feature #4)
+  const gpsValid = data.satellites > 0 || (data.lat && parseFloat(data.lat) !== 0);
+  if (!gpsValid && S.settings.offlineEnabled) {
+    activateOfflineMode(id, data, now);
+  }
+
+  S.devices[id] = {
+    ...data,
+    id, name: data.name || `Device ${id}`,
+    status: 'online',
+    speed:  parseFloat(speed.toFixed(1)),
+    totalDist: parseFloat(totalDist.toFixed(3)),
+    lastUpdate: now,
+    gpsValid
+  };
+
+  // Route history
+  if (!routePts[id]) routePts[id] = [];
+  if (data.lat && data.lng && parseFloat(data.lat) !== 0) {
+    routePts[id].push([parseFloat(data.lat), parseFloat(data.lng)]);
+    if (routePts[id].length > 300) routePts[id].shift();
+  }
+
+  // Speed history
+  if (!S.history[id]) S.history[id] = [];
+  S.history[id].push({ speed, accel: parseFloat(data.accel || 0), ts: now });
+  if (S.history[id].length > 20) S.history[id].shift();
+
+  // Per-device geofence check (Feature #3)
+  checkDeviceGeofence(id, parseFloat(data.lat), parseFloat(data.lng));
+
+  // Initialize per-device geofence if none yet
+  if (!S.geofences[id]) {
+    S.geofences[id] = {
+      lat:    parseFloat(data.lat) || 7.2906,
+      lng:    parseFloat(data.lng) || 80.6337,
+      radius: 500,
+      active: true,
+      circle: null
+    };
+  }
+
+  resetOfflineTimer(id);
+  if (S.selectedId === id) updatePanel();
+
+  // Update nav route progress if active (Feature #1)
+  if (S.navRoute.destLat && S.selectedId === id && data.lat && data.lng) {
+    updateRouteProgress(parseFloat(data.lat), parseFloat(data.lng));
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   FEATURE #4 — OFFLINE MODE
+══════════════════════════════════════════════════════════ */
+function activateOfflineMode(id, data, now) {
+  if (!S.settings.offlineEnabled) return;
+
+  if (!S.offlineQueue[id]) S.offlineQueue[id] = [];
+
+  // Store IMU + last known data
+  S.offlineQueue[id].push({
+    lat:        parseFloat(data.lat) || null,
+    lng:        parseFloat(data.lng) || null,
+    speed:      parseFloat(data.speed) || 0,
+    accel:      parseFloat(data.accel) || 0,
+    satellites: data.satellites || 0,
+    altitude:   parseFloat(data.altitude) || 0,
+    ts:         now,
+    offline:    true
+  });
+
+  // Cap buffer
+  const maxBuf = S.settings.offlineBuffer || 200;
+  if (S.offlineQueue[id].length > maxBuf) {
+    S.offlineQueue[id].shift();
+  }
+
+  updateOfflineUI();
+}
+
+function updateOfflineUI() {
+  const total = Object.values(S.offlineQueue).reduce((s, q) => s + q.length, 0);
+  document.getElementById('offline-store-count').textContent = total;
+  const pill = document.getElementById('offline-store-pill');
+  pill.classList.toggle('show', total > 0);
+  document.getElementById('offline-queue-count').textContent = total + ' records';
+}
+
+function syncOfflineQueue() {
+  const total = Object.values(S.offlineQueue).reduce((s, q) => s + q.length, 0);
+  if (total === 0 || !S.settings.autoSync) return;
+
+  document.getElementById('offline-sync-bar').classList.add('show');
+  showToast('info', `🔄 Syncing ${total} offline records...`);
+
+  let synced = 0;
+  Object.entries(S.offlineQueue).forEach(([id, queue]) => {
+    if (!queue.length) return;
+    const batch = {};
+    queue.forEach((rec, i) => {
+      batch[`offline_${id}_${rec.ts}_${i}`] = { ...rec, deviceId: id };
+    });
+    db.ref('/offline_data').update(batch).then(() => {
+      synced += queue.length;
+      S.offlineQueue[id] = [];
+      updateOfflineUI();
+      if (synced >= total) {
+        document.getElementById('offline-sync-bar').classList.remove('show');
+        fireAlert(id, 'sync', `Synced ${total} offline records for ${S.devices[id]?.name || id}`);
+        showToast('success', `✅ Offline sync complete! ${total} records uploaded.`);
+      }
+    }).catch(() => {
+      document.getElementById('offline-sync-bar').classList.remove('show');
+      showToast('danger', '❌ Offline sync failed. Will retry on next connection.');
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   OFFLINE TIMER
+══════════════════════════════════════════════════════════ */
+function resetOfflineTimer(id) {
+  clearTimeout(S.offlineTimers[id]);
+  S.offlineTimers[id] = setTimeout(() => {
+    if (!S.devices[id]) return;
+    S.devices[id].status = 'offline';
+    renderDeviceList();
+    renderMarkers();
+    if (S.selectedId === id) {
+      document.getElementById('offline-banner').classList.add('show');
+      const sb = document.getElementById('active-status');
+      sb.className = 'status-badge offline'; sb.textContent = 'OFFLINE';
+      document.getElementById('m-gps-mode').textContent = '📴 No GPS';
+    }
+    fireAlert(id, 'offline', `${S.devices[id].name} went offline`);
+  }, S.settings.offlineTimeout * 1000);
+}
+
+/* ══════════════════════════════════════════════════════════
+   FEATURE #3 — PER-DEVICE GEOFENCE
+══════════════════════════════════════════════════════════ */
+function getDeviceGeofence(id) {
+  if (!S.geofences[id]) {
+    S.geofences[id] = { lat:7.2906, lng:80.6337, radius:500, active:true, circle:null };
+  }
+  return S.geofences[id];
+}
+
+function drawDeviceGeofence(id) {
+  const gf = getDeviceGeofence(id);
+  if (gf.circle) { map.removeLayer(gf.circle); gf.circle = null; }
+  if (!gf.active) return;
+  gf.circle = L.circle([gf.lat, gf.lng], {
+    radius: gf.radius, color:'#00E5FF', weight:1.5,
+    opacity:0.5, fillColor:'#00E5FF', fillOpacity:0.04, dashArray:'6 4'
+  }).addTo(map);
+}
+
+function drawAllGeofences() {
+  Object.keys(S.geofences).forEach(id => drawDeviceGeofence(id));
+}
+
+const gfCooldowns = {};
+function checkDeviceGeofence(id, lat, lng) {
+  const gf = getDeviceGeofence(id);
+  if (!gf.active || !lat || !lng || isNaN(lat) || isNaN(lng)) return;
+  const dist = haversineM(lat, lng, gf.lat, gf.lng);
+  if (dist > gf.radius) {
+    fireAlert(id, 'geofence', `${S.devices[id]?.name || id} left geofence (${Math.round(dist)}m away)`);
+  }
+}
+
+let gfDrawMode = false;
+let gfDrawTargetId = null;  // which device's geofence we're drawing
+function toggleGeofenceDraw(targetId) {
+  gfDrawMode = !gfDrawMode;
+  gfDrawTargetId = targetId || S.selectedId;
+  const btn  = document.getElementById('geofence-btn');
+  const hint = document.getElementById('draw-hint');
+  if (gfDrawMode) {
+    btn.classList.add('active');
+    hint.style.display = 'block';
+    hint.textContent = gfDrawTargetId
+      ? `📌 Click map to set geofence for ${S.devices[gfDrawTargetId]?.name || gfDrawTargetId}`
+      : '📌 Click on map to place geofence center';
+    map.on('click', onMapClickGF);
+  } else {
+    btn.classList.remove('active'); hint.style.display = 'none';
+    map.off('click', onMapClickGF);
+  }
+}
+function onMapClickGF(e) {
+  const id = gfDrawTargetId || S.selectedId;
+  if (!id) { showToast('warning', '⚠️ Select a device first'); toggleGeofenceDraw(); return; }
+  const gf = getDeviceGeofence(id);
+  gf.lat = e.latlng.lat;
+  gf.lng = e.latlng.lng;
+  // Read from table if available
+  const radEl = document.getElementById(`gf-rad-${id}`);
+  if (radEl) gf.radius = parseInt(radEl.value) || 500;
+  drawDeviceGeofence(id);
+  updateGeofenceInfo(id);
+  renderGeofenceTable();
+  toggleGeofenceDraw();
+  showToast('info', `📐 Geofence set for ${S.devices[id]?.name || id}!`);
+}
+function applyTrailToggle() {
+  S.settings.showTrail = document.getElementById('s-trail-toggle').classList.contains('on');
+  if (!S.settings.showTrail) {
+    Object.values(trailLines).forEach(l => map.removeLayer(l));
+    Object.keys(trailLines).forEach(k => delete trailLines[k]);
+  }
+}
+function updateGeofenceInfo(id) {
+  const gf = getDeviceGeofence(id);
+  const info = document.getElementById('geofence-info');
+  info.style.display = 'block';
+  const name = S.devices[id]?.name || id;
+  info.innerHTML = `📐 <b>${name}</b><br>
+    Radius: ${gf.radius}m<br>
+    ${gf.lat.toFixed(4)}, ${gf.lng.toFixed(4)}`;
+}
+
+function saveAllGeofences() {
+  Object.keys(S.geofences).forEach(id => {
+    const latEl = document.getElementById(`gf-lat-${id}`);
+    const lngEl = document.getElementById(`gf-lng-${id}`);
+    const radEl = document.getElementById(`gf-rad-${id}`);
+    const actEl = document.getElementById(`gf-act-${id}`);
+    if (latEl) S.geofences[id].lat    = parseFloat(latEl.value) || S.geofences[id].lat;
+    if (lngEl) S.geofences[id].lng    = parseFloat(lngEl.value) || S.geofences[id].lng;
+    if (radEl) S.geofences[id].radius = parseInt(radEl.value)   || S.geofences[id].radius;
+    if (actEl) S.geofences[id].active = actEl.classList.contains('on');
+    drawDeviceGeofence(id);
+  });
+  showToast('success', '✅ Geofences saved!');
+}
+
+function renderGeofenceTable() {
+  const tbody = document.getElementById('gf-table-body');
+  const ids = Object.keys(S.devices);
+  if (!ids.length) return;
+  tbody.innerHTML = ids.map(id => {
+    const gf = getDeviceGeofence(id);
+    const name = S.devices[id]?.name || id;
+    return `<tr>
+      <td><span class="gf-badge">${name}</span></td>
+      <td><input class="gf-input-sm" id="gf-lat-${id}" value="${gf.lat.toFixed(4)}" step="0.0001" type="number"/></td>
+      <td><input class="gf-input-sm" id="gf-lng-${id}" value="${gf.lng.toFixed(4)}" step="0.0001" type="number"/></td>
+      <td><input class="gf-input-sm" id="gf-rad-${id}" value="${gf.radius}" min="50" max="50000" type="number" style="width:80px"/></td>
+      <td><div class="toggle ${gf.active?'on':''}" id="gf-act-${id}" onclick="this.classList.toggle('on')"></div></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   FEATURE #1 — ROUTE TO DESTINATION (OSRM)
+══════════════════════════════════════════════════════════ */
+let destSearchTimer = null;
+
+function onDestInput(val) {
+  clearTimeout(destSearchTimer);
+  const box = document.getElementById('dest-suggestions');
+  if (val.length < 3) { box.style.display = 'none'; return; }
+  destSearchTimer = setTimeout(() => searchNominatim(val), 400);
+}
+
+function onDestKey(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('dest-suggestions').style.display = 'none';
+  }
+}
+
+async function searchNominatim(q) {
+  const box = document.getElementById('dest-suggestions');
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`,
+      { headers:{ 'Accept-Language':'en' } }
+    );
+    const results = await res.json();
+    if (!results.length) { box.style.display = 'none'; return; }
+    box.innerHTML = results.map(r => {
+      const main = r.display_name.split(',')[0];
+      const rest = r.display_name.split(',').slice(1,3).join(',');
+      return `<div class="dest-sug-item" onclick="selectDestination(${r.lat},${r.lon},'${main.replace(/'/g,"\\'")}')">
+        <b>${main}</b><br><small>${rest}</small>
+      </div>`;
+    }).join('');
+    box.style.display = 'block';
+  } catch(e) {
+    box.style.display = 'none';
+  }
+}
+
+function selectDestination(lat, lng, name) {
+  document.getElementById('dest-input').value = name;
+  document.getElementById('dest-suggestions').style.display = 'none';
+  S.navRoute.destLat  = parseFloat(lat);
+  S.navRoute.destLng  = parseFloat(lng);
+  S.navRoute.destName = name;
+}
+
+async function startRouteToDestination() {
+  if (!S.selectedId) { showToast('warning', '⚠️ Select a device first'); return; }
+  if (!S.navRoute.destLat) { showToast('warning', '⚠️ Enter a destination first'); return; }
+
+  const dev = S.devices[S.selectedId];
+  if (!dev?.lat || !dev?.lng) { showToast('warning', '⚠️ Device has no location yet'); return; }
+
+  const oLat = parseFloat(dev.lat), oLng = parseFloat(dev.lng);
+  const dLat = S.navRoute.destLat, dLng = S.navRoute.destLng;
+
+  showToast('info', '🗺️ Fetching route…');
+  clearRouteLines();
+
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.code !== 'Ok') throw new Error('OSRM error');
+
+    const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    const distKm = (data.routes[0].distance / 1000).toFixed(1);
+    const etaMin = Math.round(data.routes[0].duration / 60);
+
+    S.navRoute.fullCoords = coords;
+    S.navRoute.totalDist  = parseFloat(distKm);
+    S.navRoute.originPt   = [oLat, oLng];
+
+    // Full route line (dashed cyan)
+    S.navRoute.lineFull = L.polyline(coords, {
+      color:'#00E5FF', weight:4, opacity:0.5, dashArray:'8 6'
+    }).addTo(map);
+
+    // Traveled portion (solid green, starts empty)
+    S.navRoute.line = L.polyline([[oLat, oLng]], {
+      color:'#00D97E', weight:5, opacity:0.85
+    }).addTo(map);
+
+    // Destination marker
+    if (S.navRoute.destMarker) map.removeLayer(S.navRoute.destMarker);
+    S.navRoute.destMarker = L.marker([dLat, dLng], {
+      icon: L.divIcon({
+        className:'', iconSize:[38,38], iconAnchor:[19,38],
+        html:`<div style="width:38px;height:38px;display:flex;align-items:center;justify-content:center">
+          <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,107,53,.2);
+            border:2px solid #FF6B35;display:flex;align-items:center;justify-content:center;
+            font-size:16px;box-shadow:0 0 12px rgba(255,107,53,.5)">🏁</div></div>`
+      })
+    }).addTo(map)
+      .bindPopup(`<b>Destination</b><br>${S.navRoute.destName}<br>${distKm} km · ~${etaMin} min`);
+
+    // Show route meta
+    document.getElementById('route-meta').style.display = 'flex';
+    document.getElementById('route-dist-val').textContent = distKm;
+    document.getElementById('route-eta-val').textContent  = etaMin;
+    document.getElementById('route-progress-badge').style.display = 'inline';
+    document.getElementById('clear-route-btn').style.display = 'flex';
+    document.getElementById('route-clear-btn').style.display = 'flex';
+
+    map.fitBounds(L.latLngBounds([[oLat,oLng],[dLat,dLng]]), { padding:[50,50] });
+    showToast('success', `✅ Route: ${distKm} km · ~${etaMin} min`);
+
+  } catch(e) {
+    showToast('danger', '❌ Could not fetch route. Check connection.');
+  }
+}
+
+function updateRouteProgress(curLat, curLng) {
+  if (!S.navRoute.fullCoords.length || !S.navRoute.line) return;
+  // Find closest point on route
+  let minDist = Infinity, minIdx = 0;
+  S.navRoute.fullCoords.forEach(([rlat, rlng], i) => {
+    const d = haversineM(curLat, curLng, rlat, rlng);
+    if (d < minDist) { minDist = d; minIdx = i; }
+  });
+  // Update traveled polyline (green) = from start to closest point
+  const traveled = S.navRoute.fullCoords.slice(0, minIdx + 1);
+  S.navRoute.line.setLatLngs(traveled.length ? traveled : [[curLat, curLng]]);
+  // Remaining = from closest point to dest (update full line opacity)
+  const pct = Math.round((minIdx / (S.navRoute.fullCoords.length - 1)) * 100);
+  document.getElementById('route-pct-val').textContent = pct;
+
+  // Snap origin marker to current vehicle position
+  if (S.navRoute.originPt) S.navRoute.originPt = [curLat, curLng];
+
+  // Check arrival
+  const distToDest = haversineM(curLat, curLng, S.navRoute.destLat, S.navRoute.destLng);
+  if (distToDest < 50) {
+    showToast('success', `🏁 Arrived at ${S.navRoute.destName}!`);
+    clearRoute();
+  }
+}
+
+function clearRouteLines() {
+  if (S.navRoute.line)       { map.removeLayer(S.navRoute.line);       S.navRoute.line       = null; }
+  if (S.navRoute.lineFull)   { map.removeLayer(S.navRoute.lineFull);   S.navRoute.lineFull   = null; }
+  if (S.navRoute.destMarker) { map.removeLayer(S.navRoute.destMarker); S.navRoute.destMarker = null; }
+}
+
+function clearRoute() {
+  clearRouteLines();
+  S.navRoute.destLat = null; S.navRoute.destLng = null;
+  S.navRoute.fullCoords = []; S.navRoute.destName = '';
+  document.getElementById('dest-input').value = '';
+  document.getElementById('route-meta').style.display = 'none';
+  document.getElementById('clear-route-btn').style.display = 'none';
+  document.getElementById('route-clear-btn').style.display = 'none';
+}
+
+/* ══════════════════════════════════════════════════════════
+   ALERT SYSTEM (no theft/accident — Feature #2)
+══════════════════════════════════════════════════════════ */
+const alertCooldowns = {};
+function fireAlert(id, type, message) {
+  // Block theft & accident alerts per requirement #2
+  if (['theft','accident'].includes(type)) return;
+
+  const key = `${id}_${type}`;
+  const now = Date.now();
+  if (alertCooldowns[key] && (now - alertCooldowns[key]) < 30000) return;
+  alertCooldowns[key] = now;
+  const dev = S.devices[id];
+  db.ref('/alerts').push({
+    deviceId: id, deviceName: dev?.name || id,
+    type, message,
+    lat: dev?.lat || null, lng: dev?.lng || null,
+    timestamp: now, read: false
+  });
+  S.totalAlerts++;
+  const icons  = { offline:'⚫', geofence:'🔵', speed:'🟠', sync:'🟢' };
+  const levels = { offline:'info', geofence:'warning', speed:'warning', sync:'success' };
+  showToast(levels[type] || 'info', `${icons[type] || '⚠️'} ${message}`);
+}
+
+function renderAlertList() {
+  const el = document.getElementById('alert-list');
+  const f  = S.alertFilter;
+  const list = f === 'all' ? S.alerts : S.alerts.filter(a => a.type === f);
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>No alerts for this filter.</p></div>`;
+    return;
+  }
+  const icons = { offline:'⚫', geofence:'🔵', speed:'🟠', sync:'🟢' };
+  el.innerHTML = list.map(a => `
+    <div class="alert-item">
+      <div class="alert-icon ${a.type}">${icons[a.type] || '⚠️'}</div>
+      <div class="alert-body">
+        <div class="alert-title">${a.message}</div>
+        <div class="alert-meta">
+          <span>📟 ${a.deviceName || a.deviceId}</span>
+          <span>🕒 ${fmtTime(a.timestamp)}</span>
+          ${a.lat ? `<span>📍 ${parseFloat(a.lat).toFixed(4)}, ${parseFloat(a.lng).toFixed(4)}</span>` : ''}
+        </div>
+      </div>
+      <span class="alert-badge ${a.type}">${a.type}</span>
+    </div>`).join('');
+}
+
+function filterAlerts(type, btn) {
+  S.alertFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAlertList();
+}
+
+function updateAlertBadge() {
+  const badge = document.getElementById('alert-badge');
+  if (S.alertUnread > 0) {
+    badge.style.display = 'inline';
+    badge.textContent = S.alertUnread > 9 ? '9+' : S.alertUnread;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAP MARKERS & TRAILS
+══════════════════════════════════════════════════════════ */
+function makeIcon(status, label) {
+  const colors = { online:'#00D97E', offline:'#FF3B5C', idle:'#FFB800' };
+  const c = colors[status] || '#7A8FAD';
+  return L.divIcon({
+    className:'', iconSize:[44,44], iconAnchor:[22,44],
+    html:`<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center">
+      <div style="width:36px;height:36px;border-radius:50%;background:${c}22;border:2px solid ${c};
+        display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 12px ${c}66">🚛</div>
+      <div style="position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);background:${c};
+        color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap;
+        font-family:'DM Mono',monospace">${label}</div>
+    </div>`
+  });
+}
+
+function renderMarkers() {
+  Object.entries(S.devices).forEach(([id, d]) => {
+    const lat = parseFloat(d.lat), lng = parseFloat(d.lng);
+    if (isNaN(lat) || isNaN(lng) || lat === 0) return;
+    const label = (d.name || id).replace('Device ','').substring(0,8);
+    if (!mapMarkers[id]) {
+      mapMarkers[id] = L.marker([lat,lng], { icon:makeIcon(d.status, label) }).addTo(map);
+      mapMarkers[id].bindPopup(() => buildPopup(id));
+      mapMarkers[id].on('click', () => selectDevice(id));
+    } else {
+      mapMarkers[id].setLatLng([lat,lng]);
+      mapMarkers[id].setIcon(makeIcon(d.status, label));
+    }
+    if (S.settings.showTrail && routePts[id]?.length > 1) {
+      if (trailLines[id]) map.removeLayer(trailLines[id]);
+      trailLines[id] = L.polyline(routePts[id], {
+        color:'#00E5FF', weight:2, opacity:0.5, dashArray:'4 4'
+      }).addTo(map);
+    }
+  });
+}
+
+function buildPopup(id) {
+  const d = S.devices[id];
+  if (!d) return 'No data';
+  const gf = getDeviceGeofence(id);
+  return `<div style="font-family:'DM Sans',sans-serif;min-width:170px">
+    <b style="font-size:14px">${d.name}</b>
+    <div style="margin-top:6px;font-size:12px;line-height:2;color:#555">
+      Speed: <b>${d.speed} km/h</b><br>
+      Lat: ${parseFloat(d.lat).toFixed(6)}<br>
+      Lng: ${parseFloat(d.lng).toFixed(6)}<br>
+      Sats: ${d.satellites || '--'}<br>
+      Geofence: <b>${gf.radius}m</b><br>
+      Status: <b style="color:${d.status==='online'?'#00D97E':'#FF3B5C'}">${d.status.toUpperCase()}</b>
+    </div>
+    <button onclick="selectDevice('${id}');toggleGeofenceDraw('${id}')" style="margin-top:6px;padding:4px 10px;background:#00E5FF22;border:1px solid #00E5FF;border-radius:4px;color:#00E5FF;font-size:11px;cursor:pointer;width:100%">📐 Set Geofence</button>
+    </div>`;
+}
+
+function fitAllDevices() {
+  const pts = Object.values(S.devices)
+    .filter(d => d.lat && d.lng && parseFloat(d.lat) !== 0)
+    .map(d => [parseFloat(d.lat), parseFloat(d.lng)]);
+  if (!pts.length) return;
+  if (pts.length === 1) { map.setView(pts[0], 15); return; }
+  map.fitBounds(L.latLngBounds(pts), { padding:[40,40] });
+}
+
+/* ══════════════════════════════════════════════════════════
+   DEVICE LIST & PANEL
+══════════════════════════════════════════════════════════ */
+function renderDeviceList() {
+  const el = document.getElementById('device-list');
+  const devs = Object.values(S.devices);
+  if (!devs.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:24px 12px">
+      <div class="icon" style="font-size:24px">📡</div>
+      <p style="font-size:11px;text-align:center">Waiting for devices...</p></div>`;
+    return;
+  }
+  el.innerHTML = devs.map(d => `
+    <div class="dev-item${S.selectedId===d.id?' selected':''}" onclick="selectDevice('${d.id}')">
+      <div class="dev-dot ${d.status}"></div>
+      <div class="dev-info">
+        <div class="dev-name">${d.name}</div>
+        <div class="dev-sub">${d.speed} km/h</div>
+      </div>
+      <button class="dev-gf-btn" onclick="event.stopPropagation();selectDevice('${d.id}');toggleGeofenceDraw('${d.id}')" title="Set geofence">📐</button>
+    </div>`).join('');
+
+  const online = devs.filter(d => d.status==='online').length;
+  document.getElementById('stat-devices').textContent = online;
+
+  // Update geofence table in settings
+  renderGeofenceTable();
+}
+
+function selectDevice(id) {
+  S.selectedId = id;
+  renderDeviceList();
+  updatePanel();
+  const d = S.devices[id];
+  if (d?.lat && d?.lng && parseFloat(d.lat) !== 0) {
+    map.setView([parseFloat(d.lat), parseFloat(d.lng)], 15);
+  }
+  document.getElementById('offline-banner').classList.toggle('show', d?.status === 'offline');
+  if (routePts[id]?.length > 1) {
+    S.playback.route = [...routePts[id]];
+    document.getElementById('pb-slider').max = S.playback.route.length - 1;
+    document.getElementById('pb-total').textContent = S.playback.route.length + ' pts';
+  }
+  // Show geofence for this device
+  if (S.geofences[id]) updateGeofenceInfo(id);
+  drawAllGeofences();
+}
+
+function updatePanel() {
+  const d = S.devices[S.selectedId];
+  if (!d) return;
+  document.getElementById('active-name').textContent = d.name;
+  document.getElementById('active-lat').textContent  = parseFloat(d.lat||0).toFixed(6);
+  document.getElementById('active-lng').textContent  = parseFloat(d.lng||0).toFixed(6);
+  document.getElementById('active-alt').textContent  = (d.altitude || '--') + ' m';
+  document.getElementById('active-hdop').textContent = d.hdop || '--';
+  document.getElementById('active-accel').textContent = d.accel ? parseFloat(d.accel).toFixed(3)+'g' : '--';
+  const sb = document.getElementById('active-status');
+  sb.className = `status-badge ${d.status}`;
+  sb.textContent = d.status.toUpperCase();
+  document.getElementById('m-speed').innerHTML  = `${d.speed}<span class="unit">km/h</span>`;
+  document.getElementById('m-dist').innerHTML   = `${d.totalDist.toFixed(2)}<span class="unit">km</span>`;
+  const tripMin = Math.round((Date.now() - (S.tripStart[d.id]||Date.now())) / 60000);
+  document.getElementById('m-time').innerHTML   = `${tripMin}<span class="unit">min</span>`;
+  document.getElementById('m-sats').textContent = d.satellites || '--';
+  document.getElementById('m-gps-mode').textContent = d.gpsValid ? '🛰️ GPS lock' : '📴 No GPS';
+  const sc = document.getElementById('m-speed-ch');
+  if (d.speed > 0) {
+    sc.textContent = d.speed > S.settings.speedThreshold ? '⚠️ Overspeed' : '✅ Normal';
+    sc.className   = `m-change ${d.speed > S.settings.speedThreshold ? 'down' : 'up'}`;
+  }
+  if (S.history[S.selectedId]) {
+    const h = S.history[S.selectedId];
+    miniSpeedChart.data.labels           = h.map((_,i) => i);
+    miniSpeedChart.data.datasets[0].data = h.map(x => x.speed.toFixed(1));
+    miniSpeedChart.update('none');
+  }
+  // Show offline banner when device is offline
+  document.getElementById('offline-banner').classList.toggle('show', d.status === 'offline');
+}
+
+/* ══════════════════════════════════════════════════════════
+   ANALYTICS
+══════════════════════════════════════════════════════════ */
+function updateAnalytics() {
+  const devs = Object.values(S.devices);
+  if (S.selectedId && S.history[S.selectedId]) {
+    const h = S.history[S.selectedId];
+    speedChart.data.labels           = h.map((_,i) => i);
+    speedChart.data.datasets[0].data = h.map(x => x.speed.toFixed(1));
+    speedChart.update('none');
+  }
+  deviceDistChart.data.labels           = devs.map(d => d.name.replace('Device ','Dev '));
+  deviceDistChart.data.datasets[0].data = devs.map(d => d.totalDist || 0);
+  deviceDistChart.update('none');
+  const totalDist = devs.reduce((s,d) => s + (d.totalDist||0), 0);
+  const maxSpd    = Math.max(...Object.values(S.maxSpeed).map(Number), 0);
+  document.getElementById('stat-distance').textContent = totalDist.toFixed(2) + ' km';
+  document.getElementById('stat-maxspeed').textContent = maxSpd.toFixed(1);
+  document.getElementById('stat-alerts').textContent   = S.totalAlerts;
+}
+
+function updateActivityChart() {
+  const buckets = Array(12).fill(0);
+  const now = Date.now();
+  Object.values(S.history).forEach(hist => {
+    hist.forEach(h => {
+      const minAgo = Math.floor((now - h.ts) / 60000);
+      if (minAgo >= 0 && minAgo < 12) buckets[11 - minAgo]++;
+    });
+  });
+  activityChart.data.datasets[0].data = buckets;
+  activityChart.update('none');
+}
+
+/* ══════════════════════════════════════════════════════════
+   ROUTE PLAYBACK
+══════════════════════════════════════════════════════════ */
+function pbToggle() {
+  S.playback.playing = !S.playback.playing;
+  document.getElementById('pb-play-btn').textContent = S.playback.playing ? '⏸' : '▶';
+  if (S.playback.playing) pbRun(); else { clearInterval(S.playback.timer); S.playback.timer=null; }
+}
+function pbRun() {
+  const spd   = parseInt(document.getElementById('pb-speed-sel').value) || 1;
+  const route = S.playback.route;
+  if (!route.length) return;
+  if (!S.playback.marker) {
+    S.playback.marker = L.marker(route[0], {
+      icon: L.divIcon({ className:'', iconSize:[36,36], iconAnchor:[18,18],
+        html:`<div style="width:36px;height:36px;border-radius:50%;background:rgba(0,229,255,.15);
+          border:2px solid #00E5FF;display:flex;align-items:center;justify-content:center;
+          font-size:18px;box-shadow:0 0 16px rgba(0,229,255,.4)">▶</div>` })
+    }).addTo(map);
+  }
+  if (S.playback.polyline) map.removeLayer(S.playback.polyline);
+  S.playback.polyline = L.polyline([], { color:'#FF6B35', weight:3 }).addTo(map);
+  clearInterval(S.playback.timer);
+  S.playback.timer = setInterval(() => {
+    if (!S.playback.playing) { clearInterval(S.playback.timer); return; }
+    const idx = S.playback.index;
+    if (idx >= route.length - 1) {
+      S.playback.playing = false;
+      document.getElementById('pb-play-btn').textContent = '▶';
+      clearInterval(S.playback.timer); return;
+    }
+    S.playback.marker.setLatLng(route[idx]);
+    S.playback.polyline.addLatLng(route[idx]);
+    map.panTo(route[idx], { animate:true, duration:0.3 });
+    S.playback.index = idx + 1;
+    document.getElementById('pb-slider').value = S.playback.index;
+    document.getElementById('pb-cur').textContent =
+      ((S.playback.index/(route.length-1))*100).toFixed(0)+'%';
+  }, Math.max(100, 500/spd));
+}
+function pbRewind() {
+  S.playback.playing = false; S.playback.index = 0;
+  document.getElementById('pb-play-btn').textContent = '▶';
+  document.getElementById('pb-slider').value = 0;
+  document.getElementById('pb-cur').textContent = '0%';
+  clearInterval(S.playback.timer);
+  if (S.playback.marker && S.playback.route[0])
+    S.playback.marker.setLatLng(S.playback.route[0]);
+}
+function pbSeek(val) {
+  S.playback.index = parseInt(val);
+  if (S.playback.marker && S.playback.route[S.playback.index])
+    S.playback.marker.setLatLng(S.playback.route[S.playback.index]);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PAGE NAV
+══════════════════════════════════════════════════════════ */
+const PAGE_META = {
+  dashboard: ['Live Map',      'Real-time asset tracking'],
+  analytics: ['Analytics',     'Performance metrics & insights'],
+  alerts:    ['Alert Center',  'Monitoring & incident log'],
+  settings:  ['Settings',      'Platform configuration']
+};
+function showPage(page, el) {
+  document.querySelectorAll('.page').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if (el) el.classList.add('active');
+  const [title, sub] = PAGE_META[page] || ['',''];
+  document.getElementById('tb-title').textContent = title;
+  document.getElementById('tb-sub').textContent   = sub;
+  if (page === 'analytics') { updateAnalytics(); updateActivityChart(); }
+  if (page === 'alerts')    { S.alertUnread = 0; updateAlertBadge(); renderAlertList(); }
+  if (page === 'settings')  { renderGeofenceTable(); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SETTINGS SAVE
+══════════════════════════════════════════════════════════ */
+function saveSettings() {
+  S.settings.offlineTimeout  = parseInt(document.getElementById('s-offline-t').value)   || 30;
+  S.settings.speedThreshold  = parseInt(document.getElementById('s-speed-t').value)     || 120;
+  S.settings.offlineEnabled  = document.getElementById('s-offline-toggle').classList.contains('on');
+  S.settings.autoSync        = document.getElementById('s-autosync-toggle').classList.contains('on');
+  S.settings.offlineBuffer   = parseInt(document.getElementById('s-offline-buf').value) || 200;
+  showToast('success', '✅ Settings saved!');
+}
+
+/* ══════════════════════════════════════════════════════════
+   THEME TOGGLE
+══════════════════════════════════════════════════════════ */
+function toggleTheme() {
+  const html = document.documentElement;
+  html.setAttribute('data-theme', html.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════ */
+function showToast(type, msg) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0'; el.style.transform = 'translateX(20px)';
+    el.style.transition = '.3s ease';
+    setTimeout(() => el.remove(), 300);
+  }, 4000);
+}
+
+/* ══════════════════════════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════════════════════════ */
+function haversineKm(lat1,lon1,lat2,lon2) {
+  const R=6371, dL=(lat2-lat1)*Math.PI/180, dG=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dG/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function haversineM(lat1,lon1,lat2,lon2){ return haversineKm(lat1,lon1,lat2,lon2)*1000; }
+function fmtTime(ts) {
+  if (!ts) return '--';
+  return new Date(ts).toLocaleTimeString('en-US', { hour12:false });
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  startListening();
+  setInterval(updateActivityChart, 30000);
+});
+</script>
+</body>
+</html>
