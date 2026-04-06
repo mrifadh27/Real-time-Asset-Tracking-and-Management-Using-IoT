@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NexTrack v4 — Smart Asset Management</title>
+<title>NexTrack v5 — Real-time Asset Tracking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -12,27 +12,27 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
-:root {
-  --accent:#00E5FF; --accent-alt:#FF6B35; --danger:#FF3B5C;
-  --warning:#FFB800; --success:#00D97E; --online:#00D97E;
-  --offline:#FF3B5C; --idle:#FFB800;
-  --font-head:'Syne',sans-serif; --font-body:'DM Sans',sans-serif;
+:root{
+  --accent:#00E5FF;--accent-alt:#FF6B35;--danger:#FF3B5C;
+  --warning:#FFB800;--success:#00D97E;--online:#00D97E;
+  --offline:#FF3B5C;--idle:#FFB800;
+  --font-head:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;
   --font-mono:'DM Mono',monospace;
-  --r-sm:6px; --r-md:12px; --r-lg:20px;
+  --r-sm:6px;--r-md:12px;--r-lg:20px;
   --tr:0.25s cubic-bezier(.4,0,.2,1);
 }
 [data-theme="dark"]{
-  --bg:#080C12; --bg-s:#0E1520; --bg-c:#111927; --bg-h:#162032;
-  --border:rgba(255,255,255,.07); --border-a:rgba(0,229,255,.25);
-  --t1:#F0F4FF; --t2:#7A8FAD; --t3:#3E5068;
-  --sidebar:#09101A; --shadow:0 8px 32px rgba(0,0,0,.5);
+  --bg:#080C12;--bg-s:#0E1520;--bg-c:#111927;--bg-h:#162032;
+  --border:rgba(255,255,255,.07);--border-a:rgba(0,229,255,.25);
+  --t1:#F0F4FF;--t2:#7A8FAD;--t3:#3E5068;
+  --sidebar:#09101A;--shadow:0 8px 32px rgba(0,0,0,.5);
   --map-f:brightness(.85) saturate(.8);
 }
 [data-theme="light"]{
-  --bg:#F0F4FA; --bg-s:#FFF; --bg-c:#FFF; --bg-h:#F5F8FF;
-  --border:rgba(0,0,0,.08); --border-a:rgba(0,150,200,.3);
-  --t1:#0D1B2A; --t2:#4A6080; --t3:#9DB0C5;
-  --sidebar:#FFF; --shadow:0 4px 20px rgba(0,0,0,.08);
+  --bg:#F0F4FA;--bg-s:#FFF;--bg-c:#FFF;--bg-h:#F5F8FF;
+  --border:rgba(0,0,0,.08);--border-a:rgba(0,150,200,.3);
+  --t1:#0D1B2A;--t2:#4A6080;--t3:#9DB0C5;
+  --sidebar:#FFF;--shadow:0 4px 20px rgba(0,0,0,.08);
   --map-f:none;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -78,12 +78,10 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
 .status-pill{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--bg-c);border:1px solid var(--border);border-radius:99px;font-size:12px;font-weight:500}
 .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
 .status-pill .dot.offline-dot{background:var(--danger);animation:none}
-.btn-icon{background:none;border:1px solid var(--border);color:var(--t2);border-radius:var(--r-sm);width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all var(--tr)}
-.btn-icon:hover{background:var(--bg-h);color:var(--t1)}
 .theme-btn{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 12px;color:var(--t2);cursor:pointer;font-size:13px;font-family:var(--font-body);transition:all var(--tr)}
 .theme-btn:hover{color:var(--t1);background:var(--bg-h)}
 
-/* ── PAGE SECTIONS ── */
+/* ── PAGES ── */
 .page{display:none;flex:1;overflow-y:auto;overflow-x:hidden}
 .page.active{display:flex;flex-direction:column}
 
@@ -95,7 +93,7 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
 .map-btn{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 14px;color:var(--t1);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--tr);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px}
 .map-btn:hover{background:var(--bg-h);border-color:var(--accent)}
 .map-btn.active{background:rgba(0,229,255,.1);border-color:var(--accent);color:var(--accent)}
-.geofence-info{position:absolute;bottom:16px;left:16px;z-index:500;background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;font-size:12px;backdrop-filter:blur(8px);display:none;max-width:220px;line-height:1.7}
+.geofence-info{position:absolute;bottom:16px;left:16px;z-index:500;background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;font-size:12px;backdrop-filter:blur(8px);display:none;max-width:240px;line-height:1.8}
 .draw-hint{position:absolute;bottom:16px;right:16px;z-index:500;background:var(--bg-c);border:1px solid var(--accent);border-radius:var(--r-md);padding:10px 14px;font-size:12px;color:var(--accent);display:none;backdrop-filter:blur(8px)}
 .right-panel{border-left:1px solid var(--border);background:var(--bg-s);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
 .panel-sec{padding:20px;border-bottom:1px solid var(--border)}
@@ -128,7 +126,7 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
 .pb-speed{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);font-family:var(--font-mono);font-size:12px;padding:4px 8px;cursor:pointer;outline:none}
 .pb-info{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);font-family:var(--font-mono)}
 
-/* ── ROUTE/DESTINATION PANEL ── */
+/* ── ROUTE PANEL ── */
 .route-panel{background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);padding:14px}
 .dest-search-wrap{position:relative;margin-bottom:10px}
 .dest-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);font-family:var(--font-body);font-size:13px;padding:9px 12px;outline:none;transition:border-color var(--tr)}
@@ -137,22 +135,24 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
 .dest-sug-item{padding:10px 12px;font-size:12.5px;cursor:pointer;border-bottom:1px solid var(--border);transition:background var(--tr);line-height:1.4}
 .dest-sug-item:last-child{border-bottom:none}
 .dest-sug-item:hover{background:var(--bg-h);color:var(--accent)}
-.dest-sug-item b{color:var(--t1)}
-.dest-sug-item small{color:var(--t3)}
-.route-meta{display:flex;gap:10px;font-size:12px;font-family:var(--font-mono);color:var(--t2);flex-wrap:wrap}
+.dest-sug-item b{color:var(--t1)}.dest-sug-item small{color:var(--t3)}
+.route-meta{display:flex;gap:10px;font-size:12px;font-family:var(--font-mono);color:var(--t2);flex-wrap:wrap;margin-bottom:10px}
 .route-meta span{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 8px}
 .route-meta span b{color:var(--t1)}
-.route-btn-row{display:flex;gap:8px;margin-top:10px}
+.route-btn-row{display:flex;gap:8px}
 .route-btn{flex:1;padding:8px;background:linear-gradient(135deg,var(--accent),#0066FF);border:none;border-radius:var(--r-sm);color:#000;font-family:var(--font-head);font-size:12px;font-weight:700;cursor:pointer;transition:opacity var(--tr)}
 .route-btn:hover{opacity:.85}
-.route-btn.danger-btn{background:linear-gradient(135deg,var(--danger),#c0002f)}
-.route-btn.danger-btn{color:#fff}
+.route-btn.danger-btn{background:linear-gradient(135deg,var(--danger),#c0002f);color:#fff}
 
-/* ── OFFLINE BANNER ── */
-.offline-banner{display:none;background:rgba(255,59,92,.12);border:1px solid rgba(255,59,92,.3);color:var(--danger);padding:8px 20px;font-size:12px;font-weight:600;text-align:center;letter-spacing:.3px}
+/* ── BANNERS ── */
+.offline-banner{display:none;background:rgba(255,59,92,.12);border:1px solid rgba(255,59,92,.3);color:var(--danger);padding:8px 20px;font-size:12px;font-weight:600;text-align:center}
 .offline-banner.show{display:block}
+.cached-banner{display:none;background:rgba(255,184,0,.1);border:1px solid rgba(255,184,0,.25);color:var(--warning);padding:6px 20px;font-size:12px;font-weight:600;text-align:center}
+.cached-banner.show{display:block}
 .offline-sync-bar{display:none;background:rgba(255,184,0,.1);border-bottom:1px solid rgba(255,184,0,.25);padding:6px 20px;font-size:12px;color:var(--warning);text-align:center;font-weight:600}
 .offline-sync-bar.show{display:block}
+.offline-store-pill{background:rgba(255,184,0,.1);border:1px solid rgba(255,184,0,.3);border-radius:99px;padding:4px 10px;font-size:11px;color:var(--warning);font-weight:600;display:none}
+.offline-store-pill.show{display:inline-flex;align-items:center;gap:5px}
 
 /* ── ANALYTICS ── */
 .analytics-pg{padding:24px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto;gap:20px}
@@ -172,7 +172,7 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
 .stat-number{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1}
 .stat-label{font-size:12px;color:var(--t2);margin-top:6px}
 
-/* ── ALERTS (no theft/accident buttons visible, filtered) ── */
+/* ── ALERTS ── */
 .alerts-pg{padding:24px;max-width:900px}
 .alert-filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
 .filter-btn{padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:var(--bg-c);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;transition:all var(--tr)}
@@ -208,7 +208,6 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
 .toggle.on::after{transform:translateX(18px)}
 .btn-save{padding:12px 40px;background:linear-gradient(135deg,var(--accent),#0066FF);border:none;border-radius:99px;color:#000;font-family:var(--font-head);font-size:15px;font-weight:700;cursor:pointer;transition:opacity var(--tr),transform var(--tr);margin-top:8px}
 .btn-save:hover{opacity:.9;transform:translateY(-1px)}
-/* Per-device geofence table */
 .gf-device-table{width:100%;border-collapse:collapse;font-size:12.5px}
 .gf-device-table th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);border-bottom:1px solid var(--border)}
 .gf-device-table td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -222,10 +221,6 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
 .toast{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-c);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--shadow);font-size:13px;font-weight:500;min-width:280px;animation:slideInRight .3s ease;backdrop-filter:blur(8px)}
 .toast.danger{border-left:3px solid var(--danger)}.toast.warning{border-left:3px solid var(--warning)}
 .toast.success{border-left:3px solid var(--success)}.toast.info{border-left:3px solid var(--accent)}
-
-/* ── OFFLINE STORE INDICATOR ── */
-.offline-store-pill{background:rgba(255,184,0,.1);border:1px solid rgba(255,184,0,.3);border-radius:99px;padding:4px 10px;font-size:11px;color:var(--warning);font-weight:600;display:none}
-.offline-store-pill.show{display:inline-flex;align-items:center;gap:5px}
 
 /* ── EMPTY STATE ── */
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--t3);gap:12px}
@@ -257,7 +252,7 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
         <div class="logo-mark">📍</div>
         <div>
           <div class="brand">Nex<span>Track</span></div>
-          <div class="brand-ver">v4.0 · PRODUCTION</div>
+          <div class="brand-ver">v5.0 · PRODUCTION</div>
         </div>
       </div>
       <div class="sec-label">Navigation</div>
@@ -289,7 +284,7 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
       </div>
     </aside>
 
-    <!-- ═══ MAIN CONTENT ═══ -->
+    <!-- ═══ MAIN ═══ -->
     <div class="main">
       <!-- TOP BAR -->
       <div class="topbar">
@@ -299,13 +294,14 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
         </div>
         <div class="tb-space"></div>
         <div class="offline-store-pill" id="offline-store-pill">💾 <span id="offline-store-count">0</span> queued</div>
-        <div class="status-pill"><div class="dot" id="fb-dot"></div><span id="fb-status">Connected</span></div>
+        <div class="status-pill"><div class="dot" id="fb-dot"></div><span id="fb-status">Connecting…</span></div>
         <button class="theme-btn" onclick="toggleTheme()">🌓 Theme</button>
       </div>
 
       <!-- ─── DASHBOARD ─── -->
       <section class="page active" id="page-dashboard">
-        <div class="offline-banner" id="offline-banner">⚠️ GPS signal lost — last known position shown. Offline mode active.</div>
+        <div class="offline-banner" id="offline-banner">⚠️ Device offline — last known position shown.</div>
+        <div class="cached-banner" id="cached-banner">📍 GPS signal lost — showing cached position. IMU data still live.</div>
         <div class="offline-sync-bar" id="offline-sync-bar">🔄 Syncing offline data to server...</div>
         <div class="dash-split">
           <div class="map-wrap">
@@ -313,10 +309,10 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
             <div class="map-ctrls">
               <button class="map-btn" onclick="fitAllDevices()">🔍 Fit All</button>
               <button class="map-btn" id="geofence-btn" onclick="toggleGeofenceDraw()">📐 Set Geofence</button>
-              <button class="map-btn" id="route-clear-btn" onclick="clearRoute()" style="display:none;color:var(--danger)">✕ Clear Route</button>
+              <button class="map-btn" id="route-clear-map-btn" onclick="clearRoute()" style="display:none;color:var(--danger)">✕ Clear Route</button>
             </div>
             <div class="geofence-info" id="geofence-info"></div>
-            <div class="draw-hint" id="draw-hint">📌 Click on map to place geofence center</div>
+            <div class="draw-hint" id="draw-hint">📌 Click map to set geofence center</div>
           </div>
 
           <!-- RIGHT PANEL -->
@@ -331,8 +327,10 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
                 <div class="coord-row"><span>Latitude</span><span class="coord-val" id="active-lat">--</span></div>
                 <div class="coord-row"><span>Longitude</span><span class="coord-val" id="active-lng">--</span></div>
                 <div class="coord-row"><span>Altitude</span><span class="coord-val" id="active-alt">-- m</span></div>
+                <div class="coord-row"><span>Heading</span><span class="coord-val" id="active-hdg">-- °</span></div>
                 <div class="coord-row"><span>HDOP</span><span class="coord-val" id="active-hdop">--</span></div>
                 <div class="coord-row"><span>IMU Accel</span><span class="coord-val" id="active-accel">--</span></div>
+                <div class="coord-row"><span>Pitch / Roll</span><span class="coord-val" id="active-tilt">--</span></div>
               </div>
             </div>
 
@@ -342,12 +340,12 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
                 <div class="metric-card">
                   <div class="m-label">Speed</div>
                   <div class="m-val" id="m-speed">0<span class="unit">km/h</span></div>
-                  <div class="m-change neutral" id="m-speed-ch">Calculating...</div>
+                  <div class="m-change neutral" id="m-speed-ch">--</div>
                 </div>
                 <div class="metric-card">
                   <div class="m-label">Distance</div>
                   <div class="m-val" id="m-dist">0<span class="unit">km</span></div>
-                  <div class="m-change neutral">Today</div>
+                  <div class="m-change neutral">Session</div>
                 </div>
                 <div class="metric-card">
                   <div class="m-label">Trip Time</div>
@@ -357,12 +355,12 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
                 <div class="metric-card">
                   <div class="m-label">Satellites</div>
                   <div class="m-val" id="m-sats">0</div>
-                  <div class="m-change neutral" id="m-gps-mode">GPS lock</div>
+                  <div class="m-change neutral" id="m-gps-mode">--</div>
                 </div>
               </div>
             </div>
 
-            <!-- ROUTE & DESTINATION — NEW FEATURE #1 -->
+            <!-- ROUTE TO DESTINATION -->
             <div class="panel-sec" id="route-section">
               <div class="sec-head">🧭 Route to Destination</div>
               <div class="route-panel">
@@ -395,7 +393,7 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
                   <button class="pb-btn" onclick="pbRewind()" title="Rewind">⏮</button>
                   <button class="pb-btn" id="pb-play-btn" onclick="pbToggle()" title="Play/Pause">▶</button>
                   <input type="range" class="pb-slider" id="pb-slider" min="0" max="100" value="0" oninput="pbSeek(this.value)"/>
-                  <select class="pb-speed" id="pb-speed-sel">
+                  <select class="pb-speed" id="pb-speed-sel" onchange="pbSpeedChanged()">
                     <option value="1">1×</option><option value="2">2×</option>
                     <option value="5">5×</option><option value="10">10×</option>
                   </select>
@@ -428,13 +426,13 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
             <div class="chart-wrap"><canvas id="activity-chart"></canvas></div>
           </div>
           <div class="chart-card full">
-            <div class="chart-hdr"><div><div class="chart-title">Distance Per Device</div><div class="chart-sub">Total km traveled</div></div></div>
+            <div class="chart-hdr"><div><div class="chart-title">Distance Per Device</div><div class="chart-sub">Total km traveled this session</div></div></div>
             <div class="chart-wrap"><canvas id="device-dist-chart"></canvas></div>
           </div>
         </div>
       </section>
 
-      <!-- ─── ALERTS (Theft & Accident removed per #2) ─── -->
+      <!-- ─── ALERTS ─── -->
       <section class="page" id="page-alerts">
         <div class="alerts-pg">
           <div class="alert-filters">
@@ -454,11 +452,10 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
       <section class="page" id="page-settings">
         <div class="settings-pg">
 
-          <!-- Per-device geofence — Feature #3 -->
           <div class="settings-sec">
-            <div class="settings-sec-hdr">📐 Per-Device Geofence Configuration</div>
+            <div class="settings-sec-hdr">📐 Per-Device Geofence</div>
             <div id="gf-device-rows" style="padding:12px 16px 0">
-              <p style="font-size:12px;color:var(--t3);padding-bottom:12px">Each device detected in the system can have its own geofence. Click <b>Set on Map</b> in the device list, or enter coordinates manually below.</p>
+              <p style="font-size:12px;color:var(--t3);padding-bottom:12px">Each device can have its own geofence. Click <b>📐</b> next to a device in the list or enter coordinates below.</p>
               <table class="gf-device-table">
                 <thead><tr>
                   <th>Device</th><th>Lat</th><th>Lng</th><th>Radius (m)</th><th>Active</th>
@@ -483,9 +480,12 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
               <div><div class="settings-label">Overspeed Threshold (km/h)</div><div class="settings-desc">Alert when speed exceeds this value</div></div>
               <input type="number" class="settings-input" id="s-speed-t" value="120" min="10" max="300"/>
             </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Geofence Alert Cooldown (s)</div><div class="settings-desc">Minimum seconds between geofence alerts</div></div>
+              <input type="number" class="settings-input" id="s-gf-cooldown" value="60" min="10" max="600"/>
+            </div>
           </div>
 
-          <!-- Offline mode config — Feature #4 -->
           <div class="settings-sec">
             <div class="settings-sec-hdr">📴 Offline Mode</div>
             <div class="settings-row">
@@ -501,7 +501,7 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
               <div class="toggle on" id="s-autosync-toggle" onclick="this.classList.toggle('on')"></div>
             </div>
             <div class="settings-row">
-              <div><div class="settings-label">Max Offline Buffer</div><div class="settings-desc">Max records stored offline (per device)</div></div>
+              <div><div class="settings-label">Max Offline Buffer</div><div class="settings-desc">Max records stored offline per device</div></div>
               <input type="number" class="settings-input" id="s-offline-buf" value="200" min="50" max="1000"/>
             </div>
           </div>
@@ -510,17 +510,18 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
             <div class="settings-sec-hdr">📊 Display</div>
             <div class="settings-row">
               <div><div class="settings-label">Dark Mode</div><div class="settings-desc">Toggle between light and dark theme</div></div>
-              <div class="toggle on" id="s-theme-toggle" onclick="toggleTheme(); this.classList.toggle('on')"></div>
+              <div class="toggle on" id="s-theme-toggle" onclick="toggleTheme();this.classList.toggle('on')"></div>
             </div>
             <div class="settings-row">
               <div><div class="settings-label">Show Route Trail</div><div class="settings-desc">Draw movement trail on map</div></div>
-              <div class="toggle on" id="s-trail-toggle" onclick="this.classList.toggle('on'); applyTrailToggle()"></div>
+              <div class="toggle on" id="s-trail-toggle" onclick="this.classList.toggle('on');applyTrailToggle()"></div>
             </div>
             <div class="settings-row">
               <div><div class="settings-label">App Version</div><div class="settings-desc">NexTrack Platform</div></div>
-              <span style="font-family:var(--font-mono);font-size:12px;color:var(--t3)">v4.0.0</span>
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--t3)">v5.0.0</span>
             </div>
           </div>
+
           <div style="text-align:center">
             <button class="btn-save" onclick="saveSettings()">💾 Save Settings</button>
           </div>
@@ -533,7 +534,6 @@ html,body{height:100%;font-family:var(--font-body);background:var(--bg);color:va
 
 <div id="toasts"></div>
 
-<!-- ══════════════════════ JAVASCRIPT ══════════════════════ -->
 <script>
 /* ══════════════════════════════════════════════════════════
    FIREBASE CONFIG
@@ -551,18 +551,19 @@ const db = firebase.database();
    APPLICATION STATE
 ══════════════════════════════════════════════════════════ */
 const S = {
-  devices:       {},
-  selectedId:    null,
-  history:       {},
-  alerts:        [],
-  alertFilter:   'all',
-  alertUnread:   0,
-  totalAlerts:   0,
-  // Per-device geofences: { deviceId: { lat, lng, radius, active, circle } }
-  geofences:     {},
+  devices:     {},
+  selectedId:  null,
+  history:     {},
+  alerts:      [],
+  alertFilter: 'all',
+  alertUnread: 0,
+  totalAlerts: 0,
+  // Per-device geofences
+  geofences:   {},
   settings: {
     offlineTimeout:  30,
     speedThreshold:  120,
+    gfCooldown:      60,
     showTrail:       true,
     offlineEnabled:  true,
     autoSync:        true,
@@ -576,32 +577,38 @@ const S = {
     polyline: null,
     timer:    null
   },
-  offlineTimers:  {},
-  tripStart:      {},
-  maxSpeed:       {},
-  // Offline queue: { deviceId: [ {lat,lng,speed,accel,ts,satellites} ] }
-  offlineQueue:   {},
-  isOffline:      false,    // global connectivity flag
-  // Active navigation route
+  offlineTimers: {},
+  tripStart:     {},
+  maxSpeed:      {},
+  offlineQueue:  {},
+  isOffline:     false,
+  firstDeviceSeen: false,
   navRoute: {
-    destLat:   null,
-    destLng:   null,
-    destName:  '',
-    line:      null,        // traveled portion polyline (green)
-    lineFull:  null,        // remaining portion polyline (cyan dashed)
+    destLat:    null,
+    destLng:    null,
+    destName:   '',
+    line:       null,
+    lineFull:   null,
     destMarker: null,
-    originPt:  null,
-    fullCoords: [],         // full OSRM route coords
+    fullCoords: [],
     totalDist:  0
   }
 };
 
-const mapMarkers  = {};
-const trailLines  = {};
-const routePts    = {};
+const mapMarkers = {};
+const trailLines = {};
+const routePts   = {};
 
 /* ══════════════════════════════════════════════════════════
-   MAP INIT
+   HELPER: safely parse any value to float
+══════════════════════════════════════════════════════════ */
+function toF(v) {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAP INIT — centered on Sri Lanka
 ══════════════════════════════════════════════════════════ */
 const map = L.map('map', { center:[7.2906, 80.6337], zoom:13, zoomControl:false });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -610,7 +617,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 L.control.zoom({ position:'bottomright' }).addTo(map);
 
 /* ══════════════════════════════════════════════════════════
-   CHART INSTANCES
+   CHARTS
 ══════════════════════════════════════════════════════════ */
 let speedChart, activityChart, deviceDistChart, miniSpeedChart;
 
@@ -618,6 +625,15 @@ function initCharts() {
   const isDark  = document.documentElement.getAttribute('data-theme') === 'dark';
   const textCol = isDark ? '#7A8FAD' : '#4A6080';
   const gridCol = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
+  const commonOpts = (extra={}) => ({
+    responsive:true, maintainAspectRatio:false, animation:{duration:300},
+    plugins:{ legend:{display:false} }, ...extra
+  });
+  const axes = (yLabel='') => ({
+    x:{ grid:{color:gridCol}, ticks:{color:textCol, maxTicksLimit:8} },
+    y:{ grid:{color:gridCol}, ticks:{color:textCol}, min:0,
+        title:{ display:!!yLabel, text:yLabel, color:textCol } }
+  });
 
   speedChart = new Chart(document.getElementById('speed-chart'), {
     type:'line',
@@ -626,13 +642,7 @@ function initCharts() {
       backgroundColor:'rgba(0,229,255,0.08)', borderWidth:2,
       fill:true, tension:0.4, pointRadius:2, pointBackgroundColor:'#00E5FF'
     }]},
-    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:300},
-      plugins:{ legend:{display:false} },
-      scales:{
-        x:{ grid:{color:gridCol}, ticks:{color:textCol, maxTicksLimit:8} },
-        y:{ grid:{color:gridCol}, ticks:{color:textCol}, min:0,
-          title:{display:true, text:'km/h', color:textCol} }
-      }}
+    options:{ ...commonOpts(), scales:axes('km/h') }
   });
 
   activityChart = new Chart(document.getElementById('activity-chart'), {
@@ -640,12 +650,7 @@ function initCharts() {
     data:{ labels:Array.from({length:12},(_,i)=>-(11-i)+'m'),
       datasets:[{ data:Array(12).fill(0), backgroundColor:'rgba(0,229,255,0.35)',
         borderColor:'rgba(0,229,255,0.7)', borderWidth:1, borderRadius:4 }]},
-    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:400},
-      plugins:{ legend:{display:false} },
-      scales:{
-        x:{ grid:{color:gridCol}, ticks:{color:textCol} },
-        y:{ grid:{color:gridCol}, ticks:{color:textCol}, min:0 }
-      }}
+    options:{ ...commonOpts(), scales:axes() }
   });
 
   deviceDistChart = new Chart(document.getElementById('device-dist-chart'), {
@@ -655,12 +660,7 @@ function initCharts() {
         'rgba(0,217,126,0.5)','rgba(255,184,0,0.5)','rgba(255,59,92,0.5)'],
       borderRadius:6
     }]},
-    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:400},
-      plugins:{ legend:{display:false} },
-      scales:{
-        x:{ grid:{color:gridCol}, ticks:{color:textCol} },
-        y:{ grid:{color:gridCol}, ticks:{color:textCol}, min:0 }
-      }}
+    options:{ ...commonOpts(), scales:axes('km') }
   });
 
   miniSpeedChart = new Chart(document.getElementById('mini-speed-chart'), {
@@ -669,9 +669,7 @@ function initCharts() {
       data:[], borderColor:'#00E5FF', backgroundColor:'rgba(0,229,255,0.1)',
       borderWidth:1.5, fill:true, tension:0.4, pointRadius:0
     }]},
-    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:200},
-      plugins:{ legend:{display:false} },
-      scales:{ x:{display:false}, y:{display:false, min:0} }}
+    options:{ ...commonOpts(), scales:{ x:{display:false}, y:{display:false,min:0} }}
   });
 }
 
@@ -686,31 +684,29 @@ function startListening() {
     renderDeviceList();
     renderMarkers();
     updateAnalytics();
+    updateActivityChart();
     document.getElementById('last-sync').textContent =
       '⏱ ' + new Date().toLocaleTimeString();
     setConnectionStatus(true);
   }, err => {
     console.error('Firebase error:', err);
     setConnectionStatus(false);
-    showToast('danger', '❌ Firebase connection error: ' + err.message);
+    showToast('danger', '❌ Firebase error: ' + err.message);
   });
 
   db.ref('/alerts').orderByChild('timestamp').limitToLast(100).on('value', snap => {
     S.alerts = [];
     snap.forEach(c => S.alerts.unshift({ id:c.key, ...c.val() }));
-    // Filter out theft & accident per requirement #2
     S.alerts = S.alerts.filter(a => !['theft','accident'].includes(a.type));
     S.alertUnread = S.alerts.filter(a => !a.read).length;
     renderAlertList();
     updateAlertBadge();
   });
 
-  // Monitor connection state (Feature #4)
   db.ref('.info/connected').on('value', snap => {
     const connected = snap.val() === true;
     setConnectionStatus(connected);
     if (connected && S.isOffline) {
-      // Was offline, now reconnected → sync
       S.isOffline = false;
       syncOfflineQueue();
     } else if (!connected) {
@@ -720,166 +716,175 @@ function startListening() {
 }
 
 function setConnectionStatus(online) {
-  const dot = document.getElementById('fb-dot');
-  const lbl = document.getElementById('fb-status');
-  if (online) {
-    dot.className = 'dot';
-    lbl.textContent = 'Connected';
-  } else {
-    dot.className = 'dot offline-dot';
-    lbl.textContent = 'Offline';
-  }
+  document.getElementById('fb-dot').className = online ? 'dot' : 'dot offline-dot';
+  document.getElementById('fb-status').textContent = online ? 'Connected' : 'Offline';
 }
 
 /* ══════════════════════════════════════════════════════════
    PROCESS DEVICE DATA
+   FIX: normalise lat/lng to numbers at entry point
 ══════════════════════════════════════════════════════════ */
 function processDevice(id, data, now) {
+  // ── CRITICAL: normalise all numeric fields immediately ──
+  const lat  = toF(data.lat);
+  const lng  = toF(data.lng);
+  const alt  = toF(data.altitude);
+  const hdop = toF(data.hdop) || 99.9;
+  const sats = parseInt(data.satellites) || 0;
+  const hdg  = toF(data.heading);
+  const accel = toF(data.accel);
+  const pitch = toF(data.pitch);
+  const roll  = toF(data.roll);
+  const gpsValid  = (data.gpsValid  === true || data.gpsValid  === 'true');
+  const gpsCached = (data.gpsCached === true || data.gpsCached === 'true');
+
   const prev = S.devices[id];
 
-  // Speed
-  let speed = 0;
-  if (data.speed !== undefined && parseFloat(data.speed) > 0) {
-    speed = parseFloat(data.speed);
-  } else if (prev && prev.lat && data.lat && data.lng) {
-    const dt = (now - (prev.lastUpdate || now - 1000)) / 1000;
+  // ── Speed: use firmware value first, compute fallback ──
+  let speed = toF(data.speed);
+  if (speed <= 0 && prev && prev._lat !== 0 && lat !== 0) {
+    const dt = (now - (prev._lastUpdate || now - 1000)) / 1000;
     if (dt > 0 && dt < 60) {
-      speed = (haversineM(prev.lat, prev.lng, data.lat, data.lng) / dt) * 3.6;
-      speed = Math.min(speed, 300);
+      const computed = (haversineM(prev._lat, prev._lng, lat, lng) / dt) * 3.6;
+      speed = Math.min(computed, 300);
     }
   }
+  speed = parseFloat(speed.toFixed(1));
 
-  // Distance
+  // ── Accumulated distance (only add when GPS valid & position changed) ──
   let addDist = 0;
-  if (prev && prev.lat && data.lat && data.lng) {
-    const d = haversineKm(prev.lat, prev.lng, data.lat, data.lng);
-    if (d < 0.5) addDist = d;
+  if (prev && prev._lat !== 0 && lat !== 0 && gpsValid) {
+    const d = haversineKm(prev._lat, prev._lng, lat, lng);
+    if (d < 0.5) addDist = d;   // ignore jumps > 500 m (GPS glitch)
   }
-  const totalDist = ((prev && prev.totalDist) || 0) + addDist;
+  const totalDist = parseFloat(((prev ? prev.totalDist : 0) + addDist).toFixed(3));
 
   if (!S.tripStart[id]) S.tripStart[id] = now;
   if (!S.maxSpeed[id] || speed > S.maxSpeed[id]) S.maxSpeed[id] = speed;
 
-  // Overspeed alert (replaces accident/crash alerts — Feature #2)
+  // ── Overspeed alert ──
   if (speed > S.settings.speedThreshold && speed > 5) {
-    fireAlert(id, 'speed', `Overspeed: ${speed.toFixed(1)} km/h`);
+    fireAlert(id, 'speed', `Overspeed: ${speed.toFixed(1)} km/h`, data.name || id);
   }
 
-  // GPS signal detection for offline mode (Feature #4)
-  const gpsValid = data.satellites > 0 || (data.lat && parseFloat(data.lat) !== 0);
-  if (!gpsValid && S.settings.offlineEnabled) {
-    activateOfflineMode(id, data, now);
-  }
-
+  // ── Store device — all lat/lng are numbers ──
   S.devices[id] = {
-    ...data,
-    id, name: data.name || `Device ${id}`,
-    status: 'online',
-    speed:  parseFloat(speed.toFixed(1)),
-    totalDist: parseFloat(totalDist.toFixed(3)),
-    lastUpdate: now,
-    gpsValid
+    id,
+    name:       data.name || `Device ${id}`,
+    status:     'online',
+    _lat:       lat,    // internal numeric
+    _lng:       lng,
+    lat, lng,           // also exposed as numbers
+    altitude:   alt,
+    hdop, satellites: sats, heading: hdg,
+    accel, pitch, roll,
+    speed, totalDist,
+    gpsValid, gpsCached,
+    vehicleState: data.vehicleState || 'parked',
+    _lastUpdate: now
   };
 
-  // Route history
+  // ── Route points (only real GPS fixes) ──
   if (!routePts[id]) routePts[id] = [];
-  if (data.lat && data.lng && parseFloat(data.lat) !== 0) {
-    routePts[id].push([parseFloat(data.lat), parseFloat(data.lng)]);
-    if (routePts[id].length > 300) routePts[id].shift();
+  if (lat !== 0 && lng !== 0 && gpsValid) {
+    routePts[id].push([lat, lng]);
+    if (routePts[id].length > 500) routePts[id].shift();
   }
 
-  // Speed history
+  // ── Speed history ──
   if (!S.history[id]) S.history[id] = [];
-  S.history[id].push({ speed, accel: parseFloat(data.accel || 0), ts: now });
+  S.history[id].push({ speed, accel, ts: now });
   if (S.history[id].length > 20) S.history[id].shift();
 
-  // Per-device geofence check (Feature #3)
-  checkDeviceGeofence(id, parseFloat(data.lat), parseFloat(data.lng));
-
-  // Initialize per-device geofence if none yet
+  // ── Geofence ──
+  checkDeviceGeofence(id, lat, lng, gpsValid);
   if (!S.geofences[id]) {
     S.geofences[id] = {
-      lat:    parseFloat(data.lat) || 7.2906,
-      lng:    parseFloat(data.lng) || 80.6337,
+      lat:    lat || 7.2906,
+      lng:    lng || 80.6337,
       radius: 500,
       active: true,
       circle: null
     };
   }
 
-  resetOfflineTimer(id);
-  if (S.selectedId === id) updatePanel();
+  // ── Offline buffer ──
+  if (!gpsValid && S.settings.offlineEnabled) {
+    activateOfflineMode(id, data, now);
+  }
 
-  // Update nav route progress if active (Feature #1)
-  if (S.navRoute.destLat && S.selectedId === id && data.lat && data.lng) {
-    updateRouteProgress(parseFloat(data.lat), parseFloat(data.lng));
+  resetOfflineTimer(id);
+
+  // ── Auto-center map on first device ──
+  if (!S.firstDeviceSeen && lat !== 0 && lng !== 0) {
+    S.firstDeviceSeen = true;
+    map.setView([lat, lng], 15);
+    S.selectedId = id;
+  }
+
+  if (S.selectedId === id) {
+    updatePanel();
+    // Update nav route progress
+    if (S.navRoute.destLat && lat !== 0) {
+      updateRouteProgress(lat, lng);
+    }
   }
 }
 
 /* ══════════════════════════════════════════════════════════
-   FEATURE #4 — OFFLINE MODE
+   OFFLINE MODE
 ══════════════════════════════════════════════════════════ */
 function activateOfflineMode(id, data, now) {
   if (!S.settings.offlineEnabled) return;
-
   if (!S.offlineQueue[id]) S.offlineQueue[id] = [];
-
-  // Store IMU + last known data
   S.offlineQueue[id].push({
-    lat:        parseFloat(data.lat) || null,
-    lng:        parseFloat(data.lng) || null,
-    speed:      parseFloat(data.speed) || 0,
-    accel:      parseFloat(data.accel) || 0,
-    satellites: data.satellites || 0,
-    altitude:   parseFloat(data.altitude) || 0,
-    ts:         now,
-    offline:    true
+    lat:        toF(data.lat),
+    lng:        toF(data.lng),
+    speed:      toF(data.speed),
+    accel:      toF(data.accel),
+    satellites: parseInt(data.satellites) || 0,
+    altitude:   toF(data.altitude),
+    ts: now, offline: true
   });
-
-  // Cap buffer
   const maxBuf = S.settings.offlineBuffer || 200;
-  if (S.offlineQueue[id].length > maxBuf) {
-    S.offlineQueue[id].shift();
-  }
-
+  if (S.offlineQueue[id].length > maxBuf) S.offlineQueue[id].shift();
   updateOfflineUI();
 }
 
 function updateOfflineUI() {
-  const total = Object.values(S.offlineQueue).reduce((s, q) => s + q.length, 0);
+  const total = Object.values(S.offlineQueue).reduce((s,q) => s+q.length, 0);
   document.getElementById('offline-store-count').textContent = total;
-  const pill = document.getElementById('offline-store-pill');
-  pill.classList.toggle('show', total > 0);
+  document.getElementById('offline-store-pill').classList.toggle('show', total > 0);
   document.getElementById('offline-queue-count').textContent = total + ' records';
 }
 
 function syncOfflineQueue() {
-  const total = Object.values(S.offlineQueue).reduce((s, q) => s + q.length, 0);
+  const total = Object.values(S.offlineQueue).reduce((s,q) => s+q.length, 0);
   if (total === 0 || !S.settings.autoSync) return;
 
   document.getElementById('offline-sync-bar').classList.add('show');
   showToast('info', `🔄 Syncing ${total} offline records...`);
 
-  let synced = 0;
+  const promises = [];
   Object.entries(S.offlineQueue).forEach(([id, queue]) => {
     if (!queue.length) return;
     const batch = {};
     queue.forEach((rec, i) => {
       batch[`offline_${id}_${rec.ts}_${i}`] = { ...rec, deviceId: id };
     });
-    db.ref('/offline_data').update(batch).then(() => {
-      synced += queue.length;
+    promises.push(db.ref('/offline_data').update(batch).then(() => {
       S.offlineQueue[id] = [];
       updateOfflineUI();
-      if (synced >= total) {
-        document.getElementById('offline-sync-bar').classList.remove('show');
-        fireAlert(id, 'sync', `Synced ${total} offline records for ${S.devices[id]?.name || id}`);
-        showToast('success', `✅ Offline sync complete! ${total} records uploaded.`);
-      }
-    }).catch(() => {
-      document.getElementById('offline-sync-bar').classList.remove('show');
-      showToast('danger', '❌ Offline sync failed. Will retry on next connection.');
-    });
+    }));
+  });
+
+  Promise.all(promises).then(() => {
+    document.getElementById('offline-sync-bar').classList.remove('show');
+    fireAlert(Object.keys(S.offlineQueue)[0] || 'sys', 'sync', `Synced ${total} offline records`);
+    showToast('success', `✅ Offline sync complete! ${total} records uploaded.`);
+  }).catch(() => {
+    document.getElementById('offline-sync-bar').classList.remove('show');
+    showToast('danger', '❌ Offline sync failed. Will retry on reconnect.');
   });
 }
 
@@ -897,14 +902,14 @@ function resetOfflineTimer(id) {
       document.getElementById('offline-banner').classList.add('show');
       const sb = document.getElementById('active-status');
       sb.className = 'status-badge offline'; sb.textContent = 'OFFLINE';
-      document.getElementById('m-gps-mode').textContent = '📴 No GPS';
+      document.getElementById('m-gps-mode').textContent = '📴 Offline';
     }
     fireAlert(id, 'offline', `${S.devices[id].name} went offline`);
   }, S.settings.offlineTimeout * 1000);
 }
 
 /* ══════════════════════════════════════════════════════════
-   FEATURE #3 — PER-DEVICE GEOFENCE
+   GEOFENCE — FIXED: proper cooldown, draw by device
 ══════════════════════════════════════════════════════════ */
 function getDeviceGeofence(id) {
   if (!S.geofences[id]) {
@@ -918,7 +923,7 @@ function drawDeviceGeofence(id) {
   if (gf.circle) { map.removeLayer(gf.circle); gf.circle = null; }
   if (!gf.active) return;
   gf.circle = L.circle([gf.lat, gf.lng], {
-    radius: gf.radius, color:'#00E5FF', weight:1.5,
+    radius:gf.radius, color:'#00E5FF', weight:1.5,
     opacity:0.5, fillColor:'#00E5FF', fillOpacity:0.04, dashArray:'6 4'
   }).addTo(map);
 }
@@ -927,18 +932,21 @@ function drawAllGeofences() {
   Object.keys(S.geofences).forEach(id => drawDeviceGeofence(id));
 }
 
-const gfCooldowns = {};
-function checkDeviceGeofence(id, lat, lng) {
+// FIX: use per-device cooldown keyed by id+type
+const alertCooldowns = {};
+function checkDeviceGeofence(id, lat, lng, gpsValid) {
   const gf = getDeviceGeofence(id);
-  if (!gf.active || !lat || !lng || isNaN(lat) || isNaN(lng)) return;
+  if (!gf.active || !lat || !lng || lat === 0 || !gpsValid) return;
   const dist = haversineM(lat, lng, gf.lat, gf.lng);
   if (dist > gf.radius) {
-    fireAlert(id, 'geofence', `${S.devices[id]?.name || id} left geofence (${Math.round(dist)}m away)`);
+    fireAlert(id, 'geofence',
+      `${S.devices[id]?.name || id} outside geofence (${Math.round(dist)} m away)`);
   }
 }
 
 let gfDrawMode = false;
-let gfDrawTargetId = null;  // which device's geofence we're drawing
+let gfDrawTargetId = null;
+
 function toggleGeofenceDraw(targetId) {
   gfDrawMode = !gfDrawMode;
   gfDrawTargetId = targetId || S.selectedId;
@@ -948,21 +956,22 @@ function toggleGeofenceDraw(targetId) {
     btn.classList.add('active');
     hint.style.display = 'block';
     hint.textContent = gfDrawTargetId
-      ? `📌 Click map to set geofence for ${S.devices[gfDrawTargetId]?.name || gfDrawTargetId}`
+      ? `📌 Click map for geofence — ${S.devices[gfDrawTargetId]?.name || gfDrawTargetId}`
       : '📌 Click on map to place geofence center';
     map.on('click', onMapClickGF);
   } else {
-    btn.classList.remove('active'); hint.style.display = 'none';
+    btn.classList.remove('active');
+    hint.style.display = 'none';
     map.off('click', onMapClickGF);
   }
 }
+
 function onMapClickGF(e) {
   const id = gfDrawTargetId || S.selectedId;
   if (!id) { showToast('warning', '⚠️ Select a device first'); toggleGeofenceDraw(); return; }
   const gf = getDeviceGeofence(id);
   gf.lat = e.latlng.lat;
   gf.lng = e.latlng.lng;
-  // Read from table if available
   const radEl = document.getElementById(`gf-rad-${id}`);
   if (radEl) gf.radius = parseInt(radEl.value) || 500;
   drawDeviceGeofence(id);
@@ -971,21 +980,13 @@ function onMapClickGF(e) {
   toggleGeofenceDraw();
   showToast('info', `📐 Geofence set for ${S.devices[id]?.name || id}!`);
 }
-function applyTrailToggle() {
-  S.settings.showTrail = document.getElementById('s-trail-toggle').classList.contains('on');
-  if (!S.settings.showTrail) {
-    Object.values(trailLines).forEach(l => map.removeLayer(l));
-    Object.keys(trailLines).forEach(k => delete trailLines[k]);
-  }
-}
+
 function updateGeofenceInfo(id) {
   const gf = getDeviceGeofence(id);
   const info = document.getElementById('geofence-info');
   info.style.display = 'block';
   const name = S.devices[id]?.name || id;
-  info.innerHTML = `📐 <b>${name}</b><br>
-    Radius: ${gf.radius}m<br>
-    ${gf.lat.toFixed(4)}, ${gf.lng.toFixed(4)}`;
+  info.innerHTML = `📐 <b>${name}</b><br>Radius: ${gf.radius} m<br>${gf.lat.toFixed(5)}, ${gf.lng.toFixed(5)}`;
 }
 
 function saveAllGeofences() {
@@ -1012,16 +1013,24 @@ function renderGeofenceTable() {
     const name = S.devices[id]?.name || id;
     return `<tr>
       <td><span class="gf-badge">${name}</span></td>
-      <td><input class="gf-input-sm" id="gf-lat-${id}" value="${gf.lat.toFixed(4)}" step="0.0001" type="number"/></td>
-      <td><input class="gf-input-sm" id="gf-lng-${id}" value="${gf.lng.toFixed(4)}" step="0.0001" type="number"/></td>
+      <td><input class="gf-input-sm" id="gf-lat-${id}" value="${gf.lat.toFixed(5)}" step="0.00001" type="number"/></td>
+      <td><input class="gf-input-sm" id="gf-lng-${id}" value="${gf.lng.toFixed(5)}" step="0.00001" type="number"/></td>
       <td><input class="gf-input-sm" id="gf-rad-${id}" value="${gf.radius}" min="50" max="50000" type="number" style="width:80px"/></td>
       <td><div class="toggle ${gf.active?'on':''}" id="gf-act-${id}" onclick="this.classList.toggle('on')"></div></td>
     </tr>`;
   }).join('');
 }
 
+function applyTrailToggle() {
+  S.settings.showTrail = document.getElementById('s-trail-toggle').classList.contains('on');
+  if (!S.settings.showTrail) {
+    Object.values(trailLines).forEach(l => { try { map.removeLayer(l); } catch(e){} });
+    Object.keys(trailLines).forEach(k => delete trailLines[k]);
+  }
+}
+
 /* ══════════════════════════════════════════════════════════
-   FEATURE #1 — ROUTE TO DESTINATION (OSRM)
+   ROUTE TO DESTINATION (OSRM)
 ══════════════════════════════════════════════════════════ */
 let destSearchTimer = null;
 
@@ -1050,7 +1059,7 @@ async function searchNominatim(q) {
     box.innerHTML = results.map(r => {
       const main = r.display_name.split(',')[0];
       const rest = r.display_name.split(',').slice(1,3).join(',');
-      return `<div class="dest-sug-item" onclick="selectDestination(${r.lat},${r.lon},'${main.replace(/'/g,"\\'")}')">
+      return `<div class="dest-sug-item" onclick="selectDestination(${r.lat},${r.lon},'${main.replace(/'/g,"\\'").replace(/"/g,'\\"')}')">
         <b>${main}</b><br><small>${rest}</small>
       </div>`;
     }).join('');
@@ -1070,12 +1079,18 @@ function selectDestination(lat, lng, name) {
 
 async function startRouteToDestination() {
   if (!S.selectedId) { showToast('warning', '⚠️ Select a device first'); return; }
-  if (!S.navRoute.destLat) { showToast('warning', '⚠️ Enter a destination first'); return; }
+  if (!S.navRoute.destLat) { showToast('warning', '⚠️ Enter and select a destination first'); return; }
 
   const dev = S.devices[S.selectedId];
-  if (!dev?.lat || !dev?.lng) { showToast('warning', '⚠️ Device has no location yet'); return; }
+  if (!dev) { showToast('warning', '⚠️ Device not found'); return; }
 
-  const oLat = parseFloat(dev.lat), oLng = parseFloat(dev.lng);
+  // FIX: use the stored numeric lat/lng
+  const oLat = dev._lat, oLng = dev._lng;
+  if (!oLat || !oLng || oLat === 0) {
+    showToast('warning', '⚠️ Device has no GPS position yet. Waiting for fix...');
+    return;
+  }
+
   const dLat = S.navRoute.destLat, dLng = S.navRoute.destLng;
 
   showToast('info', '🗺️ Fetching route…');
@@ -1085,7 +1100,7 @@ async function startRouteToDestination() {
     const url = `https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson`;
     const res  = await fetch(url);
     const data = await res.json();
-    if (data.code !== 'Ok') throw new Error('OSRM error');
+    if (data.code !== 'Ok') throw new Error('OSRM error: ' + data.code);
 
     const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
     const distKm = (data.routes[0].distance / 1000).toFixed(1);
@@ -1093,16 +1108,15 @@ async function startRouteToDestination() {
 
     S.navRoute.fullCoords = coords;
     S.navRoute.totalDist  = parseFloat(distKm);
-    S.navRoute.originPt   = [oLat, oLng];
 
-    // Full route line (dashed cyan)
+    // Full route (dashed cyan)
     S.navRoute.lineFull = L.polyline(coords, {
-      color:'#00E5FF', weight:4, opacity:0.5, dashArray:'8 6'
+      color:'#00E5FF', weight:4, opacity:0.45, dashArray:'8 6'
     }).addTo(map);
 
-    // Traveled portion (solid green, starts empty)
+    // Traveled portion (solid green)
     S.navRoute.line = L.polyline([[oLat, oLng]], {
-      color:'#00D97E', weight:5, opacity:0.85
+      color:'#00D97E', weight:5, opacity:0.9
     }).addTo(map);
 
     // Destination marker
@@ -1118,41 +1132,35 @@ async function startRouteToDestination() {
     }).addTo(map)
       .bindPopup(`<b>Destination</b><br>${S.navRoute.destName}<br>${distKm} km · ~${etaMin} min`);
 
-    // Show route meta
     document.getElementById('route-meta').style.display = 'flex';
     document.getElementById('route-dist-val').textContent = distKm;
     document.getElementById('route-eta-val').textContent  = etaMin;
     document.getElementById('route-progress-badge').style.display = 'inline';
     document.getElementById('clear-route-btn').style.display = 'flex';
-    document.getElementById('route-clear-btn').style.display = 'flex';
+    document.getElementById('route-clear-map-btn').style.display = 'flex';
 
     map.fitBounds(L.latLngBounds([[oLat,oLng],[dLat,dLng]]), { padding:[50,50] });
     showToast('success', `✅ Route: ${distKm} km · ~${etaMin} min`);
 
   } catch(e) {
-    showToast('danger', '❌ Could not fetch route. Check connection.');
+    console.error(e);
+    showToast('danger', '❌ Could not fetch route. Check internet connection.');
   }
 }
 
 function updateRouteProgress(curLat, curLng) {
   if (!S.navRoute.fullCoords.length || !S.navRoute.line) return;
-  // Find closest point on route
   let minDist = Infinity, minIdx = 0;
   S.navRoute.fullCoords.forEach(([rlat, rlng], i) => {
     const d = haversineM(curLat, curLng, rlat, rlng);
     if (d < minDist) { minDist = d; minIdx = i; }
   });
-  // Update traveled polyline (green) = from start to closest point
   const traveled = S.navRoute.fullCoords.slice(0, minIdx + 1);
   S.navRoute.line.setLatLngs(traveled.length ? traveled : [[curLat, curLng]]);
-  // Remaining = from closest point to dest (update full line opacity)
-  const pct = Math.round((minIdx / (S.navRoute.fullCoords.length - 1)) * 100);
+  const pct = Math.round((minIdx / Math.max(S.navRoute.fullCoords.length - 1, 1)) * 100);
   document.getElementById('route-pct-val').textContent = pct;
 
-  // Snap origin marker to current vehicle position
-  if (S.navRoute.originPt) S.navRoute.originPt = [curLat, curLng];
-
-  // Check arrival
+  // Check arrival (within 50 m)
   const distToDest = haversineM(curLat, curLng, S.navRoute.destLat, S.navRoute.destLng);
   if (distToDest < 50) {
     showToast('success', `🏁 Arrived at ${S.navRoute.destName}!`);
@@ -1161,9 +1169,9 @@ function updateRouteProgress(curLat, curLng) {
 }
 
 function clearRouteLines() {
-  if (S.navRoute.line)       { map.removeLayer(S.navRoute.line);       S.navRoute.line       = null; }
-  if (S.navRoute.lineFull)   { map.removeLayer(S.navRoute.lineFull);   S.navRoute.lineFull   = null; }
-  if (S.navRoute.destMarker) { map.removeLayer(S.navRoute.destMarker); S.navRoute.destMarker = null; }
+  if (S.navRoute.line)       { try { map.removeLayer(S.navRoute.line);       } catch(e){} S.navRoute.line       = null; }
+  if (S.navRoute.lineFull)   { try { map.removeLayer(S.navRoute.lineFull);   } catch(e){} S.navRoute.lineFull   = null; }
+  if (S.navRoute.destMarker) { try { map.removeLayer(S.navRoute.destMarker); } catch(e){} S.navRoute.destMarker = null; }
 }
 
 function clearRoute() {
@@ -1173,37 +1181,42 @@ function clearRoute() {
   document.getElementById('dest-input').value = '';
   document.getElementById('route-meta').style.display = 'none';
   document.getElementById('clear-route-btn').style.display = 'none';
-  document.getElementById('route-clear-btn').style.display = 'none';
+  document.getElementById('route-clear-map-btn').style.display = 'none';
 }
 
 /* ══════════════════════════════════════════════════════════
-   ALERT SYSTEM (no theft/accident — Feature #2)
+   ALERT SYSTEM
 ══════════════════════════════════════════════════════════ */
-const alertCooldowns = {};
-function fireAlert(id, type, message) {
-  // Block theft & accident alerts per requirement #2
+function fireAlert(id, type, message, devName) {
   if (['theft','accident'].includes(type)) return;
 
   const key = `${id}_${type}`;
   const now = Date.now();
-  if (alertCooldowns[key] && (now - alertCooldowns[key]) < 30000) return;
+  const cooldown = (type === 'geofence')
+    ? (S.settings.gfCooldown * 1000)
+    : 30000;
+
+  if (alertCooldowns[key] && (now - alertCooldowns[key]) < cooldown) return;
   alertCooldowns[key] = now;
-  const dev = S.devices[id];
+
+  const name = devName || S.devices[id]?.name || id;
   db.ref('/alerts').push({
-    deviceId: id, deviceName: dev?.name || id,
+    deviceId: id, deviceName: name,
     type, message,
-    lat: dev?.lat || null, lng: dev?.lng || null,
+    lat: S.devices[id]?._lat || null,
+    lng: S.devices[id]?._lng || null,
     timestamp: now, read: false
   });
   S.totalAlerts++;
+
   const icons  = { offline:'⚫', geofence:'🔵', speed:'🟠', sync:'🟢' };
   const levels = { offline:'info', geofence:'warning', speed:'warning', sync:'success' };
   showToast(levels[type] || 'info', `${icons[type] || '⚠️'} ${message}`);
 }
 
 function renderAlertList() {
-  const el = document.getElementById('alert-list');
-  const f  = S.alertFilter;
+  const el   = document.getElementById('alert-list');
+  const f    = S.alertFilter;
   const list = f === 'all' ? S.alerts : S.alerts.filter(a => a.type === f);
   if (!list.length) {
     el.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>No alerts for this filter.</p></div>`;
@@ -1218,7 +1231,7 @@ function renderAlertList() {
         <div class="alert-meta">
           <span>📟 ${a.deviceName || a.deviceId}</span>
           <span>🕒 ${fmtTime(a.timestamp)}</span>
-          ${a.lat ? `<span>📍 ${parseFloat(a.lat).toFixed(4)}, ${parseFloat(a.lng).toFixed(4)}</span>` : ''}
+          ${(a.lat && a.lat !== 0) ? `<span>📍 ${toF(a.lat).toFixed(5)}, ${toF(a.lng).toFixed(5)}</span>` : ''}
         </div>
       </div>
       <span class="alert-badge ${a.type}">${a.type}</span>
@@ -1234,23 +1247,25 @@ function filterAlerts(type, btn) {
 
 function updateAlertBadge() {
   const badge = document.getElementById('alert-badge');
-  if (S.alertUnread > 0) {
-    badge.style.display = 'inline';
-    badge.textContent = S.alertUnread > 9 ? '9+' : S.alertUnread;
-  } else {
-    badge.style.display = 'none';
-  }
+  badge.style.display = S.alertUnread > 0 ? 'inline' : 'none';
+  badge.textContent   = S.alertUnread > 9 ? '9+' : S.alertUnread;
 }
 
 /* ══════════════════════════════════════════════════════════
    MAP MARKERS & TRAILS
+   FIX: uses dev._lat / dev._lng (always numbers)
 ══════════════════════════════════════════════════════════ */
-function makeIcon(status, label) {
+function makeIcon(d) {
   const colors = { online:'#00D97E', offline:'#FF3B5C', idle:'#FFB800' };
-  const c = colors[status] || '#7A8FAD';
+  const c = colors[d.status] || '#7A8FAD';
+  // Show direction arrow when heading available and speed > 2
+  const arrow = (d.heading && d.speed > 2)
+    ? `<div style="position:absolute;top:-2px;left:50%;transform:translateX(-50%) rotate(${d.heading}deg);font-size:10px;line-height:1">▲</div>` : '';
+  const label = (d.name || d.id).substring(0,8);
   return L.divIcon({
     className:'', iconSize:[44,44], iconAnchor:[22,44],
     html:`<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center">
+      ${arrow}
       <div style="width:36px;height:36px;border-radius:50%;background:${c}22;border:2px solid ${c};
         display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 12px ${c}66">🚛</div>
       <div style="position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);background:${c};
@@ -1262,21 +1277,25 @@ function makeIcon(status, label) {
 
 function renderMarkers() {
   Object.entries(S.devices).forEach(([id, d]) => {
-    const lat = parseFloat(d.lat), lng = parseFloat(d.lng);
-    if (isNaN(lat) || isNaN(lng) || lat === 0) return;
-    const label = (d.name || id).replace('Device ','').substring(0,8);
+    const lat = d._lat, lng = d._lng;
+    // FIX: skip only if truly no position (lat === 0 AND never had GPS)
+    if (lat === 0 && lng === 0 && !d.gpsCached) return;
+    if (lat === 0 && lng === 0) return;  // skip if genuinely no coords
+
     if (!mapMarkers[id]) {
-      mapMarkers[id] = L.marker([lat,lng], { icon:makeIcon(d.status, label) }).addTo(map);
+      mapMarkers[id] = L.marker([lat, lng], { icon:makeIcon(d) }).addTo(map);
       mapMarkers[id].bindPopup(() => buildPopup(id));
       mapMarkers[id].on('click', () => selectDevice(id));
     } else {
-      mapMarkers[id].setLatLng([lat,lng]);
-      mapMarkers[id].setIcon(makeIcon(d.status, label));
+      mapMarkers[id].setLatLng([lat, lng]);
+      mapMarkers[id].setIcon(makeIcon(d));
     }
+
+    // Trail (only for online devices with real GPS)
     if (S.settings.showTrail && routePts[id]?.length > 1) {
-      if (trailLines[id]) map.removeLayer(trailLines[id]);
+      if (trailLines[id]) { try { map.removeLayer(trailLines[id]); } catch(e){} }
       trailLines[id] = L.polyline(routePts[id], {
-        color:'#00E5FF', weight:2, opacity:0.5, dashArray:'4 4'
+        color:'#FF6B35', weight:2, opacity:0.45, dashArray:'4 4'
       }).addTo(map);
     }
   });
@@ -1286,34 +1305,38 @@ function buildPopup(id) {
   const d = S.devices[id];
   if (!d) return 'No data';
   const gf = getDeviceGeofence(id);
-  return `<div style="font-family:'DM Sans',sans-serif;min-width:170px">
+  const gpsLine = d.gpsCached ? '<span style="color:#FFB800">📍 Cached position</span>' : (d.gpsValid ? '🛰️ GPS lock' : '📴 No GPS');
+  return `<div style="font-family:'DM Sans',sans-serif;min-width:180px">
     <b style="font-size:14px">${d.name}</b>
     <div style="margin-top:6px;font-size:12px;line-height:2;color:#555">
       Speed: <b>${d.speed} km/h</b><br>
-      Lat: ${parseFloat(d.lat).toFixed(6)}<br>
-      Lng: ${parseFloat(d.lng).toFixed(6)}<br>
-      Sats: ${d.satellites || '--'}<br>
-      Geofence: <b>${gf.radius}m</b><br>
+      Lat: ${d._lat.toFixed(6)}<br>
+      Lng: ${d._lng.toFixed(6)}<br>
+      Heading: ${d.heading.toFixed(1)}°<br>
+      Sats: ${d.satellites}<br>
+      Geofence: <b>${gf.radius} m</b><br>
+      GPS: ${gpsLine}<br>
       Status: <b style="color:${d.status==='online'?'#00D97E':'#FF3B5C'}">${d.status.toUpperCase()}</b>
     </div>
     <button onclick="selectDevice('${id}');toggleGeofenceDraw('${id}')" style="margin-top:6px;padding:4px 10px;background:#00E5FF22;border:1px solid #00E5FF;border-radius:4px;color:#00E5FF;font-size:11px;cursor:pointer;width:100%">📐 Set Geofence</button>
-    </div>`;
+  </div>`;
 }
 
 function fitAllDevices() {
   const pts = Object.values(S.devices)
-    .filter(d => d.lat && d.lng && parseFloat(d.lat) !== 0)
-    .map(d => [parseFloat(d.lat), parseFloat(d.lng)]);
-  if (!pts.length) return;
+    .filter(d => d._lat !== 0 && d._lng !== 0)
+    .map(d => [d._lat, d._lng]);
+  if (!pts.length) { showToast('warning', '⚠️ No device positions available'); return; }
   if (pts.length === 1) { map.setView(pts[0], 15); return; }
   map.fitBounds(L.latLngBounds(pts), { padding:[40,40] });
 }
 
 /* ══════════════════════════════════════════════════════════
    DEVICE LIST & PANEL
+   FIX: all coord displays use numeric fields
 ══════════════════════════════════════════════════════════ */
 function renderDeviceList() {
-  const el = document.getElementById('device-list');
+  const el   = document.getElementById('device-list');
   const devs = Object.values(S.devices);
   if (!devs.length) {
     el.innerHTML = `<div class="empty-state" style="padding:24px 12px">
@@ -1326,15 +1349,13 @@ function renderDeviceList() {
       <div class="dev-dot ${d.status}"></div>
       <div class="dev-info">
         <div class="dev-name">${d.name}</div>
-        <div class="dev-sub">${d.speed} km/h</div>
+        <div class="dev-sub">${d.speed} km/h · ${d.status}</div>
       </div>
       <button class="dev-gf-btn" onclick="event.stopPropagation();selectDevice('${d.id}');toggleGeofenceDraw('${d.id}')" title="Set geofence">📐</button>
     </div>`).join('');
 
   const online = devs.filter(d => d.status==='online').length;
   document.getElementById('stat-devices').textContent = online;
-
-  // Update geofence table in settings
   renderGeofenceTable();
 }
 
@@ -1343,16 +1364,22 @@ function selectDevice(id) {
   renderDeviceList();
   updatePanel();
   const d = S.devices[id];
-  if (d?.lat && d?.lng && parseFloat(d.lat) !== 0) {
-    map.setView([parseFloat(d.lat), parseFloat(d.lng)], 15);
+  if (d && d._lat !== 0 && d._lng !== 0) {
+    map.setView([d._lat, d._lng], 15);
   }
   document.getElementById('offline-banner').classList.toggle('show', d?.status === 'offline');
+  document.getElementById('cached-banner').classList.toggle('show', d?.gpsCached === true && d?.status !== 'offline');
+
+  // Load playback route
   if (routePts[id]?.length > 1) {
     S.playback.route = [...routePts[id]];
-    document.getElementById('pb-slider').max = S.playback.route.length - 1;
+    S.playback.index = 0;
+    document.getElementById('pb-slider').max   = S.playback.route.length - 1;
+    document.getElementById('pb-slider').value = 0;
     document.getElementById('pb-total').textContent = S.playback.route.length + ' pts';
+    document.getElementById('pb-cur').textContent = '0%';
   }
-  // Show geofence for this device
+
   if (S.geofences[id]) updateGeofenceInfo(id);
   drawAllGeofences();
 }
@@ -1360,34 +1387,51 @@ function selectDevice(id) {
 function updatePanel() {
   const d = S.devices[S.selectedId];
   if (!d) return;
-  document.getElementById('active-name').textContent = d.name;
-  document.getElementById('active-lat').textContent  = parseFloat(d.lat||0).toFixed(6);
-  document.getElementById('active-lng').textContent  = parseFloat(d.lng||0).toFixed(6);
-  document.getElementById('active-alt').textContent  = (d.altitude || '--') + ' m';
-  document.getElementById('active-hdop').textContent = d.hdop || '--';
-  document.getElementById('active-accel').textContent = d.accel ? parseFloat(d.accel).toFixed(3)+'g' : '--';
+
+  document.getElementById('active-name').textContent  = d.name;
+  document.getElementById('active-lat').textContent   = d._lat.toFixed(6);
+  document.getElementById('active-lng').textContent   = d._lng.toFixed(6);
+  document.getElementById('active-alt').textContent   = d.altitude.toFixed(1) + ' m';
+  document.getElementById('active-hdg').textContent   = d.heading.toFixed(1) + ' °';
+  document.getElementById('active-hdop').textContent  = d.hdop.toFixed(2);
+  document.getElementById('active-accel').textContent = d.accel.toFixed(3) + ' g';
+  document.getElementById('active-tilt').textContent  = `${d.pitch.toFixed(1)}° / ${d.roll.toFixed(1)}°`;
+
   const sb = document.getElementById('active-status');
-  sb.className = `status-badge ${d.status}`;
+  sb.className  = `status-badge ${d.status}`;
   sb.textContent = d.status.toUpperCase();
-  document.getElementById('m-speed').innerHTML  = `${d.speed}<span class="unit">km/h</span>`;
-  document.getElementById('m-dist').innerHTML   = `${d.totalDist.toFixed(2)}<span class="unit">km</span>`;
-  const tripMin = Math.round((Date.now() - (S.tripStart[d.id]||Date.now())) / 60000);
-  document.getElementById('m-time').innerHTML   = `${tripMin}<span class="unit">min</span>`;
-  document.getElementById('m-sats').textContent = d.satellites || '--';
-  document.getElementById('m-gps-mode').textContent = d.gpsValid ? '🛰️ GPS lock' : '📴 No GPS';
+
+  document.getElementById('m-speed').innerHTML = `${d.speed}<span class="unit">km/h</span>`;
+  document.getElementById('m-dist').innerHTML  = `${d.totalDist.toFixed(2)}<span class="unit">km</span>`;
+  const tripMin = Math.round((Date.now() - (S.tripStart[d.id] || Date.now())) / 60000);
+  document.getElementById('m-time').innerHTML  = `${tripMin}<span class="unit">min</span>`;
+  document.getElementById('m-sats').textContent = d.satellites;
+
+  let gpsLabel = '📴 No GPS';
+  if (d.gpsValid)       gpsLabel = '🛰️ GPS lock';
+  else if (d.gpsCached) gpsLabel = '📍 Cached pos';
+  document.getElementById('m-gps-mode').textContent = gpsLabel;
+
   const sc = document.getElementById('m-speed-ch');
   if (d.speed > 0) {
-    sc.textContent = d.speed > S.settings.speedThreshold ? '⚠️ Overspeed' : '✅ Normal';
-    sc.className   = `m-change ${d.speed > S.settings.speedThreshold ? 'down' : 'up'}`;
+    const over = d.speed > S.settings.speedThreshold;
+    sc.textContent = over ? '⚠️ Overspeed' : `✅ Normal · ${d.vehicleState}`;
+    sc.className   = `m-change ${over ? 'down' : 'up'}`;
+  } else {
+    sc.textContent = `Parked · ${d.vehicleState}`;
+    sc.className   = 'm-change neutral';
   }
+
+  // Mini speed chart
   if (S.history[S.selectedId]) {
     const h = S.history[S.selectedId];
     miniSpeedChart.data.labels           = h.map((_,i) => i);
     miniSpeedChart.data.datasets[0].data = h.map(x => x.speed.toFixed(1));
     miniSpeedChart.update('none');
   }
-  // Show offline banner when device is offline
+
   document.getElementById('offline-banner').classList.toggle('show', d.status === 'offline');
+  document.getElementById('cached-banner').classList.toggle('show', d.gpsCached && d.status !== 'offline');
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1395,17 +1439,22 @@ function updatePanel() {
 ══════════════════════════════════════════════════════════ */
 function updateAnalytics() {
   const devs = Object.values(S.devices);
-  if (S.selectedId && S.history[S.selectedId]) {
-    const h = S.history[S.selectedId];
+
+  // Speed chart — use selected device history
+  const histId = S.selectedId || Object.keys(S.history)[0];
+  if (histId && S.history[histId]) {
+    const h = S.history[histId];
     speedChart.data.labels           = h.map((_,i) => i);
     speedChart.data.datasets[0].data = h.map(x => x.speed.toFixed(1));
     speedChart.update('none');
   }
+
   deviceDistChart.data.labels           = devs.map(d => d.name.replace('Device ','Dev '));
   deviceDistChart.data.datasets[0].data = devs.map(d => d.totalDist || 0);
   deviceDistChart.update('none');
+
   const totalDist = devs.reduce((s,d) => s + (d.totalDist||0), 0);
-  const maxSpd    = Math.max(...Object.values(S.maxSpeed).map(Number), 0);
+  const maxSpd    = Math.max(...Object.values(S.maxSpeed).map(Number).filter(n => !isNaN(n)), 0);
   document.getElementById('stat-distance').textContent = totalDist.toFixed(2) + ' km';
   document.getElementById('stat-maxspeed').textContent = maxSpd.toFixed(1);
   document.getElementById('stat-alerts').textContent   = S.totalAlerts;
@@ -1425,17 +1474,29 @@ function updateActivityChart() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   ROUTE PLAYBACK
+   ROUTE PLAYBACK — FIXED: speed change restarts timer
 ══════════════════════════════════════════════════════════ */
 function pbToggle() {
   S.playback.playing = !S.playback.playing;
   document.getElementById('pb-play-btn').textContent = S.playback.playing ? '⏸' : '▶';
-  if (S.playback.playing) pbRun(); else { clearInterval(S.playback.timer); S.playback.timer=null; }
+  if (S.playback.playing) pbRun();
+  else { clearInterval(S.playback.timer); S.playback.timer = null; }
 }
+
+function pbSpeedChanged() {
+  if (S.playback.playing) {
+    clearInterval(S.playback.timer);
+    S.playback.timer = null;
+    pbRun();
+  }
+}
+
 function pbRun() {
   const spd   = parseInt(document.getElementById('pb-speed-sel').value) || 1;
   const route = S.playback.route;
-  if (!route.length) return;
+  if (!route.length) { showToast('warning','⚠️ Select a device with route history first'); return; }
+
+  // Create playback marker
   if (!S.playback.marker) {
     S.playback.marker = L.marker(route[0], {
       icon: L.divIcon({ className:'', iconSize:[36,36], iconAnchor:[18,18],
@@ -1443,9 +1504,15 @@ function pbRun() {
           border:2px solid #00E5FF;display:flex;align-items:center;justify-content:center;
           font-size:18px;box-shadow:0 0 16px rgba(0,229,255,.4)">▶</div>` })
     }).addTo(map);
+  } else {
+    S.playback.marker.setLatLng(route[S.playback.index] || route[0]);
   }
-  if (S.playback.polyline) map.removeLayer(S.playback.polyline);
-  S.playback.polyline = L.polyline([], { color:'#FF6B35', weight:3 }).addTo(map);
+
+  if (S.playback.polyline) { try { map.removeLayer(S.playback.polyline); } catch(e){} }
+  S.playback.polyline = L.polyline(route.slice(0, S.playback.index + 1), {
+    color:'#FF6B35', weight:3, opacity:0.8
+  }).addTo(map);
+
   clearInterval(S.playback.timer);
   S.playback.timer = setInterval(() => {
     if (!S.playback.playing) { clearInterval(S.playback.timer); return; }
@@ -1453,34 +1520,45 @@ function pbRun() {
     if (idx >= route.length - 1) {
       S.playback.playing = false;
       document.getElementById('pb-play-btn').textContent = '▶';
-      clearInterval(S.playback.timer); return;
+      clearInterval(S.playback.timer);
+      showToast('info', '🎬 Playback finished');
+      return;
     }
     S.playback.marker.setLatLng(route[idx]);
     S.playback.polyline.addLatLng(route[idx]);
     map.panTo(route[idx], { animate:true, duration:0.3 });
     S.playback.index = idx + 1;
     document.getElementById('pb-slider').value = S.playback.index;
-    document.getElementById('pb-cur').textContent =
-      ((S.playback.index/(route.length-1))*100).toFixed(0)+'%';
-  }, Math.max(100, 500/spd));
+    const pct = ((S.playback.index / Math.max(route.length-1,1)) * 100).toFixed(0);
+    document.getElementById('pb-cur').textContent = pct + '%';
+  }, Math.max(80, 500 / spd));
 }
+
 function pbRewind() {
-  S.playback.playing = false; S.playback.index = 0;
+  S.playback.playing = false;
+  S.playback.index   = 0;
   document.getElementById('pb-play-btn').textContent = '▶';
   document.getElementById('pb-slider').value = 0;
   document.getElementById('pb-cur').textContent = '0%';
   clearInterval(S.playback.timer);
+  if (S.playback.polyline) { try { map.removeLayer(S.playback.polyline); } catch(e){} S.playback.polyline = null; }
   if (S.playback.marker && S.playback.route[0])
     S.playback.marker.setLatLng(S.playback.route[0]);
 }
+
 function pbSeek(val) {
   S.playback.index = parseInt(val);
-  if (S.playback.marker && S.playback.route[S.playback.index])
-    S.playback.marker.setLatLng(S.playback.route[S.playback.index]);
+  const route = S.playback.route;
+  if (!route.length) return;
+  const idx = Math.min(S.playback.index, route.length - 1);
+  if (S.playback.marker) S.playback.marker.setLatLng(route[idx]);
+  if (S.playback.polyline) S.playback.polyline.setLatLngs(route.slice(0, idx+1));
+  const pct = ((idx / Math.max(route.length-1,1)) * 100).toFixed(0);
+  document.getElementById('pb-cur').textContent = pct + '%';
 }
 
 /* ══════════════════════════════════════════════════════════
-   PAGE NAV
+   PAGE NAVIGATION
 ══════════════════════════════════════════════════════════ */
 const PAGE_META = {
   dashboard: ['Live Map',      'Real-time asset tracking'],
@@ -1488,6 +1566,7 @@ const PAGE_META = {
   alerts:    ['Alert Center',  'Monitoring & incident log'],
   settings:  ['Settings',      'Platform configuration']
 };
+
 function showPage(page, el) {
   document.querySelectorAll('.page').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1505,11 +1584,12 @@ function showPage(page, el) {
    SETTINGS SAVE
 ══════════════════════════════════════════════════════════ */
 function saveSettings() {
-  S.settings.offlineTimeout  = parseInt(document.getElementById('s-offline-t').value)   || 30;
-  S.settings.speedThreshold  = parseInt(document.getElementById('s-speed-t').value)     || 120;
-  S.settings.offlineEnabled  = document.getElementById('s-offline-toggle').classList.contains('on');
-  S.settings.autoSync        = document.getElementById('s-autosync-toggle').classList.contains('on');
-  S.settings.offlineBuffer   = parseInt(document.getElementById('s-offline-buf').value) || 200;
+  S.settings.offlineTimeout = parseInt(document.getElementById('s-offline-t').value)   || 30;
+  S.settings.speedThreshold = parseInt(document.getElementById('s-speed-t').value)     || 120;
+  S.settings.gfCooldown     = parseInt(document.getElementById('s-gf-cooldown').value) || 60;
+  S.settings.offlineEnabled = document.getElementById('s-offline-toggle').classList.contains('on');
+  S.settings.autoSync       = document.getElementById('s-autosync-toggle').classList.contains('on');
+  S.settings.offlineBuffer  = parseInt(document.getElementById('s-offline-buf').value) || 200;
   showToast('success', '✅ Settings saved!');
 }
 
@@ -1518,11 +1598,12 @@ function saveSettings() {
 ══════════════════════════════════════════════════════════ */
 function toggleTheme() {
   const html = document.documentElement;
-  html.setAttribute('data-theme', html.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+  html.setAttribute('data-theme',
+    html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 }
 
 /* ══════════════════════════════════════════════════════════
-   TOAST
+   TOAST NOTIFICATIONS
 ══════════════════════════════════════════════════════════ */
 function showToast(type, msg) {
   const el = document.createElement('div');
@@ -1530,7 +1611,8 @@ function showToast(type, msg) {
   el.textContent = msg;
   document.getElementById('toasts').appendChild(el);
   setTimeout(() => {
-    el.style.opacity = '0'; el.style.transform = 'translateX(20px)';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(20px)';
     el.style.transition = '.3s ease';
     setTimeout(() => el.remove(), 300);
   }, 4000);
@@ -1539,12 +1621,17 @@ function showToast(type, msg) {
 /* ══════════════════════════════════════════════════════════
    UTILITIES
 ══════════════════════════════════════════════════════════ */
-function haversineKm(lat1,lon1,lat2,lon2) {
-  const R=6371, dL=(lat2-lat1)*Math.PI/180, dG=(lon2-lon1)*Math.PI/180;
-  const a=Math.sin(dL/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dG/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R  = 6371;
+  const dL = (lat2 - lat1) * Math.PI / 180;
+  const dG = (lon2 - lon1) * Math.PI / 180;
+  const a  = Math.sin(dL/2)**2
+    + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dG/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-function haversineM(lat1,lon1,lat2,lon2){ return haversineKm(lat1,lon1,lat2,lon2)*1000; }
+function haversineM(lat1, lon1, lat2, lon2) {
+  return haversineKm(lat1, lon1, lat2, lon2) * 1000;
+}
 function fmtTime(ts) {
   if (!ts) return '--';
   return new Date(ts).toLocaleTimeString('en-US', { hour12:false });
@@ -1556,6 +1643,7 @@ function fmtTime(ts) {
 window.addEventListener('DOMContentLoaded', () => {
   initCharts();
   startListening();
+  // Activity chart refresh every 30 s
   setInterval(updateActivityChart, 30000);
 });
 </script>
