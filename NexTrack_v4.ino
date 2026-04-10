@@ -1,6 +1,7 @@
 /*
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  NexTrack v5.0 — Production Firmware                                    ║
+ * ║  VECTOR — Production Firmware                                            ║
+ * ║  Vehicle Embedded Communication Tracking Optimization and Reporting      ║
  * ║  ESP32 + SIM808 (GPS via AT commands, no SIM needed) + MPU6050          ║
  * ║  → Firebase Realtime DB via Wi-Fi                                       ║
  * ║                                                                          ║
@@ -68,8 +69,8 @@
 #define FIREBASE_HOST   "realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app"
 
 // Device identity (change per unit)
-#define DEVICE_ID       "tracker_01"
-#define DEVICE_NAME     "Vehicle 01"
+#define DEVICE_ID       "vector_01"
+#define DEVICE_NAME     "Asset 01"
 
 // ════════════════════════════════════════════
 //  ②  PIN DEFINITIONS
@@ -95,9 +96,14 @@
 #define MAX_OFFLINE_RECORDS     200
 #define OFFLINE_FILE            "/offline_queue.json"
 #define WIFI_RECONNECT_INTERVAL 15000
-#define GPS_TIMEOUT_MS          15000   // 15 s with no valid fix = signal lost
+#define GPS_TIMEOUT_MS          30000   // 30 s with no valid fix = signal lost (first fix may take 30-120s)
 #define AT_TIMEOUT_MS           3000    // wait up to 3 s for AT response
-#define GPS_POLL_INTERVAL_MS    1000    // poll SIM808 every 1 s
+#define GPS_POLL_INTERVAL_MS    500     // poll SIM808 every 500 ms for faster updates
+#define GPS_MAX_RETRIES         3       // retry AT commands up to 3 times
+#define GPS_LAT_MIN             -90.0   // latitude bounds
+#define GPS_LAT_MAX             90.0
+#define GPS_LNG_MIN             -180.0  // longitude bounds
+#define GPS_LNG_MAX             180.0
 
 // ════════════════════════════════════════════
 //  OBJECTS & GLOBALS
@@ -180,7 +186,7 @@ void setup() {
   delay(400);
 
   Serial.println(F("\n╔═══════════════════════════════════════════╗"));
-  Serial.println(F("║  NexTrack v5.0  Production Firmware       ║"));
+  Serial.println(F("║  VECTOR  Real-Time Asset Tracking        ║"));
   Serial.printf ("║  Device  : %-30s ║\n", DEVICE_ID);
   Serial.printf ("║  Network : %-30s ║\n", WIFI_SSID);
   Serial.println(F("╚═══════════════════════════════════════════╝\n"));
@@ -209,17 +215,20 @@ void setup() {
 
   // ── SIM808 UART ──
   sim808.begin(SIM808_BAUD, SERIAL_8N1, SIM808_RX_PIN, SIM808_TX_PIN);
-  delay(200);
+  delay(500);
   powerOnSIM808();
 
   // ── Start GPS on SIM808 (no SIM required) ──
   Serial.println(F("[SIM808] Enabling GNSS power..."));
-  sendAT("AT+CGNSPWR=1", "OK", 3000);
-  delay(500);
+  for (int i = 0; i < 3; i++) {
+    if (sendAT("AT+CGNSPWR=1", "OK", 3000)) break;
+    delay(500);
+  }
+  delay(800);
   sendAT("AT+CGNSSEQ=\"RMC\"", "OK", 1000);
   // Set NMEA output interval 1 s (optional, we poll manually)
   sendAT("AT+CGNSURC=0", "OK", 1000);   // disable unsolicited NMEA
-  Serial.println(F("[SIM808] ✅ GNSS started — waiting for fix..."));
+  Serial.println(F("[SIM808] ✅ GNSS started — waiting for first fix (30-120s outdoor)..."));
 
   // ── WiFi ──
   connectWiFi();
@@ -372,7 +381,7 @@ bool sendAT(const char* cmd, const char* expect, uint32_t timeout) {
 }
 
 // ════════════════════════════════════════════
-//  POLL SIM808 GPS via AT+CGNSINF
+//  POLL SIM808 GPS via AT+CGNSINF (improved)
 // ════════════════════════════════════════════
 //  Response format:
 //  +CGNSINF: <GNSS run>,<Fix status>,<UTC date-time>,
@@ -382,49 +391,60 @@ bool sendAT(const char* cmd, const char* expect, uint32_t timeout) {
 //            <GLONASS satellites used>,<reserved3>,<C/N0 max>,<HPA>,<VPA>
 // ════════════════════════════════════════════
 void pollSIM808GPS() {
-  while (sim808.available()) sim808.read(); // flush
-  sim808.println("AT+CGNSINF");
+  for (int retry = 0; retry < GPS_MAX_RETRIES; retry++) {
+    while (sim808.available()) sim808.read(); // flush
+    delay(30);
+    sim808.println("AT+CGNSINF");
 
-  unsigned long t = millis();
-  String line = "";
-  bool gotLine = false;
-  while (millis() - t < AT_TIMEOUT_MS) {
-    while (sim808.available()) {
-      char c = (char)sim808.read();
-      if (c == '\n') {
-        if (line.startsWith("+CGNSINF:")) {
-          gotLine = true;
-          break;
+    unsigned long t = millis();
+    String line = "";
+    bool gotLine = false;
+    while (millis() - t < AT_TIMEOUT_MS) {
+      while (sim808.available()) {
+        char c = (char)sim808.read();
+        if (c == '\n') {
+          if (line.startsWith("+CGNSINF:")) {
+            gotLine = true;
+            break;
+          }
+          line = "";         } else if (c != '\r') {
+          line += c;
         }
-        line = "";
-      } else if (c != '\r') {
-        line += c;
       }
+      if (gotLine) break;
+      delay(5);
     }
-    if (gotLine) break;
-    delay(5);
-  }
 
-  if (!gotLine) return;
-
-  GpsSnapshot newFix;
-  if (parseCGNSINF(line, newFix)) {
-    // Compute heading from consecutive fixes
-    if (gpsEverValid && gpsLastValid.lat != 0 && newFix.valid) {
-      double dLng = (newFix.lng - gpsLastValid.lng) * cos(newFix.lat * 0.01745329);
-      double dLat = (newFix.lat - gpsLastValid.lat);
-      if (fabs(dLat) > 1e-7 || fabs(dLng) > 1e-7) {
-        float hdg = (float)(atan2(dLng, dLat) * RAD2DEG);
-        if (hdg < 0) hdg += 360.0f;
-        newFix.heading = hdg;
+    if (!gotLine) {
+      if (retry < GPS_MAX_RETRIES - 1) {
+        delay(100);
+        continue;
       } else {
-        newFix.heading = gpsLastValid.heading;
+        return;
       }
     }
-    gpsNow = newFix;
-    if (newFix.valid) {
-      gpsLastValid  = newFix;
-      gpsEverValid  = true;
+
+
+    GpsSnapshot newFix;
+    if (parseCGNSINF(line, newFix)) {
+      // Compute heading from consecutive fixes
+      if (gpsEverValid && gpsLastValid.lat != 0 && newFix.valid) {
+        double dLng = (newFix.lng - gpsLastValid.lng) * cos(newFix.lat * 0.01745329);
+        double dLat = (newFix.lat - gpsLastValid.lat);
+        if (fabs(dLat) > 1e-7 || fabs(dLng) > 1e-7) {
+          float hdg = (float)(atan2(dLng, dLat) * RAD2DEG);
+          if (hdg < 0) hdg += 360.0f;
+          newFix.heading = hdg;
+        } else {
+          newFix.heading = gpsLastValid.heading;
+        }
+      }
+      gpsNow = newFix;
+      if (newFix.valid) {
+        gpsLastValid  = newFix;
+        gpsEverValid  = true;
+      }
+      return;  // Successfully parsed, exit retry loop
     }
   }
 }
@@ -458,9 +478,9 @@ bool parseCGNSINF(const String& line, GpsSnapshot& out) {
   int fixStatus = fields[1].toInt();
 
   if (gnssRun != 1) {
-    // GNSS not running — re-enable
-    sendAT("AT+CGNSPWR=1", "OK", 2000);
-    return false;
+    // GNSS not running — re-enable (will be retried by pollSIM808GPS)
+    Serial.println(F("[GPS] GNSS not running, attempting to re-enable..."));
+    return false;  // Return, let outer retry loop handle it
   }
 
   out.valid = (fixStatus == 1);
@@ -476,8 +496,11 @@ bool parseCGNSINF(const String& line, GpsSnapshot& out) {
   if (count > 10) out.hdop      = fields[10].toDouble();
   if (count > 15) out.satellites = fields[15].toInt();
 
-  // Sanity check
+  // ✅ IMPROVED VALIDATION: check bounds (not just 0,0)
   if (out.lat == 0.0 && out.lng == 0.0) { out.valid = false; return true; }
+  if (out.lat < GPS_LAT_MIN || out.lat > GPS_LAT_MAX) { out.valid = false; return true; }
+  if (out.lng < GPS_LNG_MIN || out.lng > GPS_LNG_MAX) { out.valid = false; return true; }
+  if (isnan(out.lat) || isnan(out.lng)) { out.valid = false; return true; }
 
   return true;
 }

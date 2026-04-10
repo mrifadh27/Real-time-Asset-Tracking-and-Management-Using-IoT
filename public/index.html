@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VECTOR — Real-Time Intelligent Asset Tracking</title>
+
+  <!-- Favicon (VECTOR Logo) -->
+  <link rel="icon" type="image/png" href="/assets/avatar-img-icon.png" />
+  <link rel="apple-touch-icon" href="/assets/avatar-img-icon.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="/src/styles/styles.css" />
+</head>
+<body>
+
+  <!-- App root -->
+  <div id="app">
+    <!-- Loading screen removed by main.js on boot -->
+    <div id="loading-screen">
+      <div class="loader-icon">📍</div>
+      <div class="loader-title">VECTOR</div>
+      <div class="loader-spinner"></div>
+    </div>
+  </div>
+
+  <!-- Toast container (outside #app so it always overlays) -->
+  <div id="toasts"></div>
+
+  <!-- ES-module entry point -->
+  <script type="module" src="/src/main.js"></script>
+
+</body>
+</html>
