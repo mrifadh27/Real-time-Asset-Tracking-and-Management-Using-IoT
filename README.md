@@ -1,5 +1,904 @@
 # 🗺️ VECTOR — Real-Time Intelligent Asset Tracking System
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./vite.config.js)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D16.0-brightgreen.svg)](https://nodejs.org)
+[![Build Tool](https://img.shields.io/badge/build-Vite-purple.svg)](https://vitejs.dev)
+
+A comprehensive **GPS-based real-time asset tracking platform** combining embedded ESP32 IoT hardware with an interactive web dashboard for live monitoring, analytics, geofencing, and route optimization.
+
+**🎯 Perfect for:** Fleet management, vehicle tracking, asset monitoring, logistics optimization, and real-time location services.
+
+---
+
+## 📑 Quick Navigation
+
+- [Overview](#-overview)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [System Architecture](#-system-architecture)
+- [Project Structure](#-project-structure)
+- [Hardware Setup](#-hardware-setup)
+- [Installation & Setup](#-installation--setup)
+- [Usage Guide](#-usage-guide)
+- [Configuration](#-configuration)
+- [API & Modules](#-api--modules)
+- [Development](#-development)
+- [Troubleshooting](#-troubleshooting)
+- [License](#-license)
+- [Support & Contributions](#-support--contributions)
+
+---
+
+## 🎯 Overview
+
+**VECTOR** is a **dual-component real-time tracking system** combining:
+- **Hardware Layer:** ESP32 microcontroller with SIM808 GPS module and MPU6050 accelerometer
+- **Cloud Backend:** Firebase Realtime Database storing device telemetry, geofences, and alerts
+- **Web Frontend:** Interactive Vite-based dashboard with Leaflet maps and Chart.js analytics
+
+### System Components
+
+| Component | Description |
+|-----------|-------------|
+| **🔌 Hardware Layer** | ESP32 + SIM808 GPS (no SIM card required) + MPU6050 IMU transmitting telemetry via Wi-Fi |
+| **☁️ Backend Layer** | Firebase Realtime Database (realtime-asset-tracking-e00df, asia-southeast1) |
+| **🖥️ Frontend Layer** | Vite dev server + Vanilla JavaScript with Leaflet.js (CDN) and Chart.js (CDN) |
+
+### Why VECTOR?
+
+✅ **Real-Time Tracking** - Live location updates every 5 seconds (configurable)  
+✅ **No SIM Required** - GPS works independently without cellular connectivity  
+✅ **Offline Queuing** - Automatically stores and syncs data when Wi-Fi reconnects  
+✅ **Dual-Core Processing** - ESP32's 240MHz dual-core handles simultaneous telemetry  
+✅ **Lightweight Frontend** - Zero framework bloat, pure JavaScript (ES6+)  
+✅ **Responsive Design** - Works on desktop, tablet, and mobile browsers  
+
+---
+
+## ✨ Features
+
+### 🗺️ Real-Time Mapping
+- **Live GPS Tracking** - Device markers update every 5 seconds
+- **Movement Trails** - Visual path of recent movement
+- **Marker Clustering** - Groups devices when zoomed out
+- **Auto-Pan** - Click device in sidebar to focus map
+- **Multiple Map Layers** - Street, satellite, and terrain views (Leaflet)
+
+### 🚨 Intelligent Alerting
+- **Geofence Alerts** - Detect zone entry/exit automatically
+- **Speed Alerts** - Notifications when speed exceeds thresholds
+- **Impact Detection** - Uses MPU6050 accelerometer data
+- **Alert History** - Browse and dismiss past alerts
+- **Real-Time Notifications** - Toast notifications for new alerts
+
+### 📊 Advanced Analytics
+- **Live Dashboard** - Current speed, distance, device count
+- **Performance Charts** - Speed trends and activity timelines (Chart.js)
+- **Device Insights** - Per-device analytics
+- **Offline Indicators** - Clear visibility of which devices are offline
+- **Activity Timeline** - Movement history visualization
+
+### 🎬 Playback & Route Planning
+- **Historical Playback** - Rewind and re-watch vehicle routes
+- **Speed Control** - 0.5x to 4x playback speed
+- **Route Seek** - Jump to any point in history
+- **Route Planning** - Set destinations with address search
+- **ETA Display** - Time and distance to destination
+
+### 📱 Beautiful, Responsive UI
+- **Multi-Page Dashboard** - Dashboard, Analytics, Alerts, Settings
+- **Device Sidebar** - List with quick device filtering
+- **Real-Time Topbar** - Notifications and system status
+- **Mobile-Friendly** - Responsive layout on all screen sizes
+- **Dark Mode Ready** - CSS variables support theme switching
+
+### 🔌 Offline & Resilience
+- **Offline Queue** - Queues up to 200 records locally when Wi-Fi disconnects
+- **Auto-Sync** - Automatically syncs when connection restored
+- **Conflict Resolution** - Intelligent merge for offline updates
+- **SPIFFS Storage** - Persistent storage on ESP32 filesystem
+
+### 📡 Rich Telemetry
+
+The device sends:
+- **GPS Coordinates** - Latitude/longitude (±5-10m accuracy typical)
+- **Speed & Heading** - Calculated from consecutive GPS fixes
+- **Accelerometer Data** - 3-axis acceleration for impact detection
+- **Battery Level** - Power status monitoring
+- **Timestamps** - All data timestamped for accurate replay
+- **Device Name** - Custom label per device
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 16+ installed
+- Firebase project with Realtime Database (free tier works)
+- ESP32 dev board + SIM808 module + MPU6050 sensor
+
+### 1. Setup Web Dashboard (5 minutes)
+
+**Clone & Install:**
+```bash
+git clone <your-repo-url>
+cd Real-time-Asset-Tracking-and-Management-Using-IoT
+npm install
+```
+
+**Run Development Server:**
+```bash
+npm run dev
+# Opens http://localhost:3000
+```
+
+**Note:** Dashboard will load but show no devices until ESP32 connects.
+
+### 2. Setup Hardware (30 minutes)
+
+**Wiring ESP32:**
+- SIM808 TX → ESP32 GPIO 16 (RX2)
+- SIM808 RX → ESP32 GPIO 17 (TX2)
+- SIM808 VCC → 5V external power (not USB!)
+- SIM808 GND → Common ground
+- MPU6050 SDA → ESP32 GPIO 21
+- MPU6050 SCL → ESP32 GPIO 22
+- MPU6050 VCC → 3.3V
+- MPU6050 GND → Common ground
+
+**Flash Firmware:**
+1. Open `NexTrack_v4.ino` in Arduino IDE
+2. Install board: **ESP32 Dev Module**
+3. Install libraries: **MPU6050**, **ArduinoJson** (6.x)
+4. Edit these lines in sketch:
+   - `#define WIFI_SSID "YOUR_SSID"`
+   - `#define WIFI_PASSWORD "YOUR_PASSWORD"`
+   - Update `FIREBASE_HOST` if using different Firebase project
+5. Upload (921600 baud)
+6. Open Serial Monitor (115200 baud) to verify connection
+
+### 3. Configure Firebase
+
+Current project uses: `realtime-asset-tracking-e00df` (asia-southeast1)
+
+**To use your own Firebase project:**
+
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Create project or use existing
+3. Enable **Realtime Database** (Test Mode)
+4. Get database URL from **Settings → General**
+5. Update in both:
+   - `NexTrack_v4.ino` (line with `FIREBASE_HOST`)
+   - `src/config/firebase.js` (databaseURL)
+
+### ✅ Verify All Working
+
+1. **Check dashboard:** Device should appear on map within 10 seconds
+2. **Check Serial Monitor:** Should show `[INFO] Sending telemetry...` every 5 seconds
+3. **Check Firebase:** Go to Console → Realtime Database → see `devices` branch
+
+---
+
+## 🏗️ System Architecture
+
+### Component Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      VECTOR SYSTEM                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌────────────────┐        ┌──────────────────┐  ┌──────────┐
+│  │   HARDWARE     │        │    BACKEND       │  │ FRONTEND │
+│  │   (ESP32)      │        │  (Firebase RT)   │  │ (Vite)   │
+│  ├────────────────┤        ├──────────────────┤  ├──────────┤
+│  │ • WiFi         │ HTTPS  │ • Realtime DB    │  │ • Maps   │
+│  │ • SIM808 GPS   │◄─────►│ • Auth           │◄─┤ • Charts │
+│  │ • MPU6050 IMU  │ WebSock│ • Rules          │  │ • Alerts │
+│  │ • SPIFFS       │        │ • Geofences      │  │ • Sidebar│
+│  │ • Li-Po Battery│        │ • Devices path   │  │ • Pages  │
+│  └────────────────┘        └──────────────────┘  └──────────┘
+│   Updates: 5s               Real-time listeners    Poll/Events
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+
+```
+Device (ESP32)
+  ↓ (Every 5 seconds)
+  ├─ Read GPS from SIM808
+  ├─ Read accelerometer (MPU6050)
+  ├─ Calculate heading
+  └─ POST JSON to Firebase via Wi-Fi
+          ↓
+Firebase Realtime Database (asia-southeast1)
+  ├─ Stores in /devices/{deviceId}/
+  ├─ Triggers alert rules
+  ├─ Broadcasts changes via WebSocket
+  └─ Stores geofences & history
+          ↓
+Web Dashboard (Browser)
+  ├─ WebSocket listener updates markers
+  ├─ Refreshes analytics charts
+  ├─ Displays alerts
+  └─ Updates sidebar device list
+```
+
+### Technology Stack
+
+| Layer | Technology | Version | Purpose |
+|-------|-----------|---------|---------|
+| **Microcontroller** | ESP32 | - | 240MHz dual-core processor |
+| **Firmware** | C++ (Arduino) | C++11 | Device logic & sensor integration |
+| **GPS** | SIM808 | - | GPS receiver (works without SIM) |
+| **IMU** | MPU6050 | - | 6-axis accelerometer/gyroscope |
+| **Backend** | Firebase Realtime DB | - | Real-time sync, rules engine |
+| **Frontend** | Vanilla JavaScript | ES6+ | UI rendering, no frameworks |
+| **Build Tool** | Vite | 5.2.0 | Dev server, production bundling |
+| **Maps** | Leaflet.js | 1.9.4 | Interactive mapping (via CDN) |
+| **Charts** | Chart.js | 4.4.2 | Analytics visualization (via CDN) |
+| **Styling** | CSS3 | - | Responsive design |
+| **Database** | Firebase Realtime | - | asia-southeast1 region |
+
+---
+
+## 📂 Project Structure
+
+```
+Real-time-Asset-Tracking-and-Management-Using-IoT/
+│
+├── 📘 Configuration Files
+│   ├── NexTrack_v4.ino          # ESP32 firmware (main entry)
+│   ├── package.json              # Node.js scripts & metadata
+│   └── vite.config.js            # Vite build config
+│
+├── 📄 public/                    # Static web assets
+│   ├── index.html                # HTML entry point
+│   └── assets/                   # Images, icons
+│
+├── 💻 src/                       # Application source
+│   │
+│   ├── main.js                   # App orchestration entry point
+│   │
+│   ├── config/
+│   │   └── firebase.js           # Firebase init + helpers
+│   │
+│   ├── modules/                  # Core features (no params!)
+│   │   ├── map.js               # Leaflet map rendering
+│   │   ├── geofence.js          # Geofence drawing/detection
+│   │   ├── devices.js           # Device sync & offline queue
+│   │   ├── alerts.js            # Alert firing & history
+│   │   ├── analytics.js         # Chart.js graphs
+│   │   ├── playback.js          # Route replay engine
+│   │   ├── route.js             # Route planning
+│   │   └── search.js            # Device search
+│   │
+│   ├── styles/
+│   │   └── styles.css            # All CSS styling
+│   │
+│   ├── ui/                       # UI components
+│   │   ├── pages.js              # Page HTML templates
+│   │   ├── panel.js              # Device info panel
+│   │   ├── sidebar.js            # Left sidebar
+│   │   ├── topbar.js             # Top navigation
+│   │   └── settings.js           # Settings panel
+│   │
+│   └── utils/                    # Helper utilities
+│       ├── state.js              # Global app state
+│       ├── events.js             # Pub/Sub event bus
+│       ├── helpers.js            # Utility functions
+│       └── toast.js              # Toast notifications
+│
+├── 🚀 dist/                      # Production build (generated)
+├── 📦 node_modules/              # Dependencies (generated)
+└── .git/                         # Git repository
+
+```
+
+### Key Module Exports
+
+| Module | Exports | Purpose |
+|--------|---------|---------|
+| **map.js** | `initMap()`, `renderMarkers()`, `panToDevice(id)`, `clearTrails()`, `fitAllDevices()` | Leaflet map rendering |
+| **devices.js** | `processDevice(id, raw, now)`, `syncOfflineQueue()`, `offlineQueueTotal()`, `updateOfflineUI()` | Device data sync |
+| **geofence.js** | `drawAllGeofences()`, `toggleDrawMode()`, `saveGeofencesFromForm()` | Geofence management |
+| **alerts.js** | `fireAlert()`, `processAlertsSnapshot()`, `renderAlertList()`, `updateAlertBadge()` | Alert system |
+| **analytics.js** | `initCharts()`, `updateAnalytics()`, `updateActivityChart()` | Chart.js graphs |
+| **playback.js** | `loadRoute(deviceId)`, `toggle()`, `rewind()`, `seek(val)`, `onSpeedChange()` | Route replay |
+| **route.js** | `startRoute()`, `clearRoute()`, `updateProgress()`, `onDestInput()` | Route planner |
+
+---
+
+## 🔧 Hardware Setup
+
+### Component List
+
+| Component | Model | Purpose | Cost |
+|-----------|-------|---------|------|
+| **Microcontroller** | ESP32 (30-pin) | Main processor, Wi-Fi | $8-12 |
+| **GPS Module** | SIM808 | GPS receiver + 2G cellular | $25-40 |
+| **Accelerometer** | MPU6050 | 6-axis IMU (accel + gyro) | $3-5 |
+| **Battery** | Li-Po 3.7V | Power source | $10-20 |
+| **Antenna** | SIM808 GPS Antenna | External GPS antenna | $3-8 |
+| **USB Cable** | Micro USB | Programming | $2-5 |
+
+**Total: $50-90 USD**
+
+### Wiring Reference
+
+```
+┌─────────────────┬──────────────┬────────────────┐
+│ Component       │ Pin          │ ESP32 Pin      │
+├─────────────────┼──────────────┼────────────────┤
+│ SIM808 (UART2)  │ TX           │ GPIO 16 (RX2)  │
+│                 │ RX           │ GPIO 17 (TX2)  │
+│                 │ VCC          │ 5V external ⚡ │
+│                 │ GND          │ GND            │
+│                 │ PWRKEY       │ GPIO 4 (opt)   │
+├─────────────────┼──────────────┼────────────────┤
+│ MPU6050 (I2C)   │ SDA          │ GPIO 21        │
+│                 │ SCL          │ GPIO 22        │
+│                 │ VCC          │ 3.3V           │
+│                 │ GND          │ GND            │
+├─────────────────┼──────────────┼────────────────┤
+│ Battery         │ +3.7V / GND  │ Via power mgmt │
+└─────────────────┴──────────────┴────────────────┘
+```
+
+### Hardware Setup Checklist
+
+- [ ] Connect SIM808 TX → ESP32 GPIO 16
+- [ ] Connect SIM808 RX → ESP32 GPIO 17
+- [ ] Connect SIM808 VCC → 5V external power supply
+- [ ] Connect SIM808 GND → common ground
+- [ ] Connect MPU6050 SDA → ESP32 GPIO 21
+- [ ] Connect MPU6050 SCL → ESP32 GPIO 22
+- [ ] Connect MPU6050 VCC → ESP32 3.3V
+- [ ] Connect MPU6050 GND → common ground
+- [ ] Mount GPS antenna externally (facing sky)
+- [ ] Connect Li-Po battery
+- [ ] Test ESP32 board detection in Arduino IDE
+- [ ] Upload NexTrack_v4.ino
+
+### GPS Notes
+
+⚠️ **GPS Acquisition:**
+- **Antenna:** Must be external, facing upward, clear sky view required
+- **Time to First Fix:** 30-120 seconds outdoors (cold start)
+- **SIM Card:** NOT required—GPS works independently
+- **Power:** SIM808 needs external 5V (not ESP32 USB)
+
+---
+
+## 💻 Installation & Setup
+
+### Prerequisites
+
+```bash
+# Check Node.js (need v16+)
+node --version
+
+# Check npm
+npm --version
+
+# Arduino IDE from arduino.cc
+```
+
+### Step 1: Clone & Install Dashboard
+
+```bash
+git clone <your-repo-url>
+cd Real-time-Asset-Tracking-and-Management-Using-IoT
+npm install
+```
+
+### Step 2: Configure Firebase (if not using default project)
+
+**File:** `src/config/firebase.js`
+
+```javascript
+const FB_CONFIG = {
+  apiKey:      'YOUR_API_KEY',
+  authDomain:  'your-project.firebaseapp.com',
+  databaseURL: 'https://your-project-default-rtdb.REGION.firebasedatabase.app/',
+  projectId:   'your-project-id',
+};
+```
+
+**Also update firmware:**
+
+**File:** `NexTrack_v4.ino`
+
+```cpp
+#define FIREBASE_HOST   "your-project-default-rtdb.REGION.firebasedatabase.app"
+```
+
+### Step 3: Setup ESP32 Firmware
+
+1. **Open Arduino IDE** → **NexTrack_v4.ino**
+
+2. **Install Board:**
+   - Tools → Board Manager
+   - Search "ESP32" → Install
+   - Tools → Board → "ESP32 Dev Module"
+
+3. **Install Libraries:**
+   - Tools → Manage Libraries
+   - Search and install:
+     - **ArduinoJson** (v6.x)
+     - **MPU6050** (by Electronic Cats)
+
+4. **Edit Configuration (NexTrack_v4.ino):**
+   ```cpp
+   #define WIFI_SSID       "MrTecno"        // Your Wi-Fi SSID
+   #define WIFI_PASSWORD   "00000000"       // Your password
+   #define DEVICE_ID       "vector_01"      // Unique ID per device
+   #define DEVICE_NAME     "Asset 01"       // Display name
+   #define FIREBASE_HOST   "realtime-asset-..."  // Your Firebase
+   ```
+
+5. **Connect ESP32 via USB**
+
+6. **Upload:**
+   - Tools → Port → Select your port
+   - Tools → Upload Speed → 921600
+   - Click Upload (→ button)
+
+7. **Verify:**
+   - Tools → Serial Monitor (115200 baud)
+   - Should show connection logs
+
+### Step 4: Start Dashboard
+
+```bash
+npm run dev
+# Opens http://localhost:3000
+```
+
+Your device should appear on the map within 10 seconds!
+
+---
+
+## 🎮 Usage Guide
+
+### Dashboard Pages
+
+**Dashboard (default view):**
+- Live map with device markers
+- Sidebar showing all connected devices
+- Real-time telemetry data
+
+**Analytics:**
+- Speed, distance, activity charts
+- Device performance metrics
+
+**Alerts:**
+- Alert history and filtering
+- Dismiss / view alert details
+
+**Settings:**
+- Device configuration
+- UI preferences
+- Data export
+
+### Common Tasks
+
+#### Track a Device
+1. Click device in sidebar
+2. Map pans to device location
+3. Watch marker update every 5 seconds
+
+#### Create Geofence
+1. Click "📍 Geofence" in topbar
+2. Click map to draw polygon
+3. Double-click to close shape
+4. Save with name and alert type
+
+#### View Route Playback
+1. Select device from sidebar
+2. Click "▶️ Playback"
+3. Use controls to rewind/seek
+
+#### Set Destination
+1. Type address in "Destination" field
+2. Select from autocomplete
+3. See ETA and distance
+
+---
+
+## ⚙️ Configuration
+
+### Firmware Configuration (NexTrack_v4.ino)
+
+```cpp
+// ═══════════════════════════════════════════
+// USER CONFIGURATION
+// ═══════════════════════════════════════════
+
+// WiFi
+#define WIFI_SSID       "MrTecno"
+#define WIFI_PASSWORD   "00000000"
+
+// Firebase
+#define FIREBASE_HOST   "realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app"
+
+// Device identity (unique per unit)
+#define DEVICE_ID       "vector_01"
+#define DEVICE_NAME     "Asset 01"
+
+// Timing
+#define UPLOAD_INTERVAL_MS   5000     // Send data every 5 seconds
+#define HEARTBEAT_INTERVAL_MS 10000   // Heartbeat every 10 seconds
+
+// GPS
+#define GPS_TIMEOUT_MS  30000   // Timeout if no lock
+```
+
+### Dashboard Configuration (src/config/firebase.js)
+
+```javascript
+const FB_CONFIG = {
+  apiKey:      'AIzaSyAZiSKitF5KYCam6Lzmdc4pPlczLUQmQ_A',
+  authDomain:  'realtime-asset-tracking-e00df.firebaseapp.com',
+  databaseURL: 'https://realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app/',
+  projectId:   'realtime-asset-tracking-e00df',
+};
+```
+
+---
+
+## 🧩 API & Modules
+
+### Module: map.js
+
+```javascript
+import { initMap, renderMarkers, panToDevice, clearTrails, fitAllDevices } from './modules/map.js';
+
+// Initialize Leaflet map
+initMap();
+
+// Render device markers
+renderMarkers();
+
+// Pan to specific device
+panToDevice(deviceId);
+
+// Fit all devices in view
+fitAllDevices();
+
+// Clear movement trails
+clearTrails();
+```
+
+### Module: devices.js
+
+```javascript
+import { processDevice, syncOfflineQueue, offlineQueueTotal, updateOfflineUI } from './modules/devices.js';
+
+// Process incoming device update
+processDevice(deviceId, telemetryData, timestamp);
+
+// Sync queued offline records
+await syncOfflineQueue();
+
+// Get number of queued records
+const total = offlineQueueTotal();
+
+// Update offline indicators in UI
+updateOfflineUI();
+```
+
+### Module: alerts.js
+
+```javascript
+import { fireAlert, renderAlertList, updateAlertBadge } from './modules/alerts.js';
+
+// Fire alert notification
+fireAlert(alertType, deviceId, message);
+
+// Display alert list
+renderAlertList();
+
+// Update alert badge count
+updateAlertBadge(count);
+```
+
+### Module: analytics.js
+
+```javascript
+import { initCharts, updateAnalytics, updateActivityChart } from './modules/analytics.js';
+
+// Initialize Chart.js charts
+initCharts();
+
+// Refresh all analytics from current data
+updateAnalytics();
+
+// Update activity timeline chart
+updateActivityChart();
+```
+
+### Module: playback.js
+
+```javascript
+import { loadRoute, toggle, rewind, seek, onSpeedChange } from './modules/playback.js';
+
+// Load historical route for device
+loadRoute(deviceId);
+
+// Play/pause route
+toggle();
+
+// Return to route start
+rewind();
+
+// Jump to timestamp
+seek(timestamp);
+
+// Change playback speed
+onSpeedChange(); // Called by UI slider
+```
+
+### Utility: state.js
+
+```javascript
+import { S } from './utils/state.js';
+
+// Access global state
+S.devices           // All connected devices
+S.alerts            // Alert history
+S.geofences         // Defined geofences
+S.user              // User settings
+S.offline_queue     // Offline queued records
+```
+
+### Utility: events.js
+
+```javascript
+import { on, emit, EV } from './utils/events.js';
+
+// Subscribe to event
+on(EV.DEVICE_UPDATED, (data) => {
+  console.log('Device updated:', data);
+});
+
+// Emit event
+emit(EV.DEVICE_UPDATED, deviceData);
+
+// Available events
+EV.DEVICE_UPDATED
+EV.ALERT_FIRED
+EV.GEOFENCE_CROSSED
+EV.OFFLINE_STATUS_CHANGED
+```
+
+---
+
+## 🛠️ Development
+
+### Development Workflow
+
+```bash
+# 1. Start dev server (hot reload enabled)
+npm run dev
+
+# 2. Modify files in src/
+# Changes auto-reload immediately
+
+# 3. Stop server
+# Ctrl + C in terminal
+```
+
+### Build for Production
+
+```bash
+# Create optimized bundle in dist/
+npm run build
+
+# Test production locally
+npm run preview
+```
+
+### Editing Tips
+
+- **CSS:** Modify `src/styles/styles.css`
+- **Pages:** Modify `src/ui/pages.js` templates
+- **Firebase:** Modify `src/config/firebase.js`
+- **Modules:** Modify files in `src/modules/`
+- **Firmware:** Modify `NexTrack_v4.ino` and re-upload
+
+### Dependencies
+
+```json
+{
+  "devDependencies": {
+    "vite": "^5.2.0"
+  }
+}
+```
+
+**Note:** Leaflet.js and Chart.js are loaded via CDN in `public/index.html`, not npm.
+
+---
+
+## 🐛 Troubleshooting
+
+### GPS Not Acquiring Lock
+
+**Symptoms:** Serial monitor shows no GPS fix, coordinates stuck at 0,0
+
+**Solutions:**
+1. Antenna must be external and facing upward
+2. Test outdoors (not indoors)
+3. GPS needs 30-120 seconds on first power-up
+4. Verify SIM808 power: measure 5V at VCC pin
+5. Check UART wiring: RX/TX not swapped
+
+### Device Not Appearing on Map
+
+**Symptoms:** Dashboard loads but no device, sidebar empty
+
+**Solutions:**
+1. **Check ESP32 serial output (115200 baud)**
+   - Should show: `[INFO] Connected! IP: 192.168.x.x`
+   - If not: Check Wi-Fi SSID and password
+
+2. **Check Firebase connection**
+   - Serial should show: `[INFO] Firebase connected!`
+   - Verify FIREBASE_HOST is correct
+
+3. **Check Firebase console**
+   - Go to Firebase Realtime DB
+   - Should see `/devices` branch with data
+   - If empty: Device not sending data
+
+4. **Check dashboard console**
+   - Press F12 → Console tab
+   - Look for Firebase connection errors
+   - Check Network tab for WebSocket connection
+
+### Dashboard Not Loading
+
+**Symptoms:** Blank page or infinite loading
+
+**Solutions:**
+1. **Clear browser cache:** Ctrl + Shift + Delete
+2. **Check browser console (F12):**
+   - Look for red errors
+   - Common: `firebaseConfig is undefined` → fix firebase.js
+3. **Verify Firebase project:** Is Realtime DB enabled?
+4. **Check network:** Is your computer online?
+
+### Geofence Not Triggering Alerts
+
+**Symptoms:** Geofence created but no alerts when crossing
+
+**Solutions:**
+1. Geofence polygon must be closed (end point connects to start)
+2. GPS accuracy is ±5-10m, draw geofence larger than needed
+3. Check Firebase database for geofence data structure
+4. Check browser console for JavaScript errors
+
+### Offline Queue Not Syncing
+
+**Symptoms:** Device offline, data queues, but doesn't sync when reconnected
+
+**Solutions:**
+1. Device must have Wi-Fi connectivity to sync
+2. Manually trigger sync: Check browser console
+3. Verify Firebase write permissions in rules
+4. Check `/offline_queue.json` in ESP32 SPIFFS
+
+---
+
+## 🗂️ Firebase Data Schema
+
+Your Firebase project stores data in this structure:
+
+```json
+{
+  "devices": {
+    "vector_01": {
+      "name": "Asset 01",
+      "lat": 40.7128,
+      "lng": -74.0060,
+      "speed": 45,
+      "heading": 270,
+      "battery": 85,
+      "timestamp": 1700000000000
+    }
+  },
+  "geofences": {
+    "warehouse_zone": {
+      "name": "Warehouse",
+      "coordinates": [[40.7, -74.0], [40.8, -74.0], [40.8, -74.1]],
+      "alertType": "entry"
+    }
+  },
+  "alerts": {
+    "alert_id": {
+      "deviceId": "vector_01",
+      "type": "speed",
+      "message": "Speed limit exceeded",
+      "timestamp": 1700000000000,
+      "dismissed": false
+    }
+  }
+}
+```
+
+---
+
+## 📚 Additional Resources
+
+- **Leaflet Docs:** https://leafletjs.com/reference/
+- **Firebase Realtime DB:** https://firebase.google.com/docs/database
+- **Arduino ESP32:** https://docs.espressif.com/projects/arduino-esp32/
+- **Vite Docs:** https://vitejs.dev/
+- **Chart.js Docs:** https://www.chartjs.org/docs/latest/
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**:
+
+```
+MIT License
+
+Copyright (c) 2026 VECTOR Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## 👥 Support & Contributions
+
+**Found a bug or have a feature request?**
+- Open an issue on GitHub with a clear description
+- Include reproduction steps and error messages
+- Attach screenshots if helpful
+
+**Want to contribute?**
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make changes and test thoroughly
+4. Commit clearly: `git commit -m "feat: describe changes"`
+5. Push: `git push origin feature/your-feature`
+6. Open Pull Request
+
+**Development Guidelines:**
+- Follow code style conventions documented above
+- Keep commits atomic and focused
+- Update README if adding features
+- Test on real hardware when possible
+
+---
+
+**VECTOR** © 2026 - Real-Time Asset Tracking Made Simple
+# 🗺️ VECTOR — Real-Time Intelligent Asset Tracking System
+
 [![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16.0-brightgreen.svg)](https://nodejs.org)
@@ -1486,43 +2385,58 @@ The firmware supports OTA updates via Wi-Fi (no USB required):
 
 ---
 
-## 🐛 Troubleshooting
-
-### GPS Not Locking
-- Ensure SIM808 antenna is facing the sky
-- Check GPS has 30+ seconds to acquire first fix
-- Verify power supply is stable (5V required)
-- Check UART2 wiring on ESP32
-
-### Device Not Appearing on Map
-- Verify Firebase credentials in config
-- Check device is connected to Wi-Fi
-- Monitor Firebase console for data updates
-- Check browser console for JavaScript errors
-
-### Dashboard Not Loading
-- Clear browser cache
-- Verify Firebase database is accessible
-- Check network connectivity
-- Review browser DevTools console for errors
-
-### Geofence Not Triggering
-- Ensure GPS coordinates are accurate
-- Verify geofence polygon is closed
-- Check alert type is configured correctly
-- Refine polygon if needed
-
----
-
 ## 📄 License
 
-[Add your license here]
+This project is licensed under the **MIT License** - see below for details:
+
+```
+MIT License
+
+Copyright (c) 2026 VECTOR Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 
 ## 👥 Support & Contributions
 
-For issues, feature requests, or contributions, please [create an issue or submit a PR].
+**Found a bug or have a feature request?**
+- Open an issue on GitHub with a clear description
+- Include reproduction steps, expected behavior, and actual behavior
+- Attach screenshots or logs if helpful
+
+**Want to contribute code?**
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make your changes and test thoroughly
+4. Commit with clear messages: `git commit -m "feat: describe your changes"`
+5. Push to your fork: `git push origin feature/your-feature`
+6. Open a Pull Request with description of changes
+
+**Development Guidelines:**
+- Follow the code style conventions documented in the [Development](#-development) section
+- Keep commits atomic and focused
+- Update README.md if adding new features
+- Test on real hardware when possible
+
+For security issues, please email instead of opening a public issue.
 
 ---
 
