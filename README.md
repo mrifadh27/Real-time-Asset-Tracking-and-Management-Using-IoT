@@ -42,7 +42,7 @@ A comprehensive **GPS-based real-time asset tracking platform** combining embedd
 | Component | Description |
 |-----------|-------------|
 | **🔌 Hardware Layer** | ESP32 + SIM808 GPS (no SIM card required) + MPU6050 IMU transmitting telemetry via Wi-Fi |
-| **☁️ Backend Layer** | Firebase Realtime Database (realtime-asset-tracking-e00df, asia-southeast1) |
+| **☁️ Backend Layer** | Firebase Realtime Database (your project) |
 | **🖥️ Frontend Layer** | Vite dev server + Vanilla JavaScript with Leaflet.js (CDN) and Chart.js (CDN) |
 
 ### Why VECTOR?
@@ -161,17 +161,15 @@ npm run dev
 
 ### 3. Configure Firebase
 
-Current project uses: `realtime-asset-tracking-e00df` (asia-southeast1)
-
-**To use your own Firebase project:**
+**To configure Firebase for your project:**
 
 1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Create project or use existing
-3. Enable **Realtime Database** (Test Mode)
+2. Create new project or use existing
+3. Enable **Realtime Database** (Test Mode for development)
 4. Get database URL from **Settings → General**
-5. Update in both:
-   - `NexTrack_v4.ino` (line with `FIREBASE_HOST`)
-   - `src/config/firebase.js` (databaseURL)
+5. Update in both files:
+   - `NexTrack_v4.ino`: Set `FIREBASE_HOST` to your database URL
+   - `src/config/firebase.js`: Update entire `FB_CONFIG` object with your credentials
 
 ### ✅ Verify All Working
 
@@ -366,11 +364,11 @@ Real-time-Asset-Tracking-and-Management-Using-IoT/
 
 ### GPS Notes
 
-⚠️ **GPS Acquisition:**
+⚠️ **Important GPS Notes:**
 - **Antenna:** Must be external, facing upward, clear sky view required
 - **Time to First Fix:** 30-120 seconds outdoors (cold start)
 - **SIM Card:** NOT required—GPS works independently
-- **Power:** SIM808 needs external 5V (not ESP32 USB)
+- **Power:** SIM808 requires external 5V power supply (not ESP32 USB port)
 
 ---
 
@@ -396,25 +394,30 @@ cd Real-time-Asset-Tracking-and-Management-Using-IoT
 npm install
 ```
 
-### Step 2: Configure Firebase (if not using default project)
+### Step 2: Configure Firebase
+
+⚠️ **Do NOT commit credentials to GitHub!**
 
 **File:** `src/config/firebase.js`
 
+Update with your Firebase credentials from [Firebase Console](https://console.firebase.google.com):
 ```javascript
 const FB_CONFIG = {
-  apiKey:      'YOUR_API_KEY',
+  apiKey:      'YOUR_API_KEY',           // From Settings → Project Settings
   authDomain:  'your-project.firebaseapp.com',
   databaseURL: 'https://your-project-default-rtdb.REGION.firebasedatabase.app/',
   projectId:   'your-project-id',
 };
 ```
 
-**Also update firmware:**
+**Also in firmware:**
 
 **File:** `NexTrack_v4.ino`
 
 ```cpp
 #define FIREBASE_HOST   "your-project-default-rtdb.REGION.firebasedatabase.app"
+#define WIFI_SSID       "YOUR_SSID"
+#define WIFI_PASSWORD   "YOUR_PASSWORD"
 ```
 
 ### Step 3: Setup ESP32 Firmware
@@ -434,11 +437,11 @@ const FB_CONFIG = {
 
 4. **Edit Configuration (NexTrack_v4.ino):**
    ```cpp
-   #define WIFI_SSID       "MrTecno"        // Your Wi-Fi SSID
-   #define WIFI_PASSWORD   "00000000"       // Your password
-   #define DEVICE_ID       "vector_01"      // Unique ID per device
-   #define DEVICE_NAME     "Asset 01"       // Display name
-   #define FIREBASE_HOST   "realtime-asset-..."  // Your Firebase
+   #define WIFI_SSID       "YOUR_SSID"        // Your Wi-Fi SSID
+   #define WIFI_PASSWORD   "YOUR_PASSWORD"    // Your password
+   #define DEVICE_ID       "vector_01"        // Unique ID per device
+   #define DEVICE_NAME     "Asset 01"         // Display name
+   #define FIREBASE_HOST   "your-firebase-rtdb.region.firebasedatabase.app"  // Your Firebase
    ```
 
 5. **Connect ESP32 via USB**
@@ -516,18 +519,18 @@ Your device should appear on the map within 10 seconds!
 
 ```cpp
 // ═══════════════════════════════════════════
-// USER CONFIGURATION
+// USER CONFIGURATION — EDIT THESE!
 // ═══════════════════════════════════════════
 
-// WiFi
-#define WIFI_SSID       "MrTecno"
-#define WIFI_PASSWORD   "00000000"
+// WiFi (replace with your credentials)
+#define WIFI_SSID       "YOUR_SSID"
+#define WIFI_PASSWORD   "YOUR_PASSWORD"
 
-// Firebase
-#define FIREBASE_HOST   "realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app"
+// Firebase (get from Firebase Console)
+#define FIREBASE_HOST   "your-project-default-rtdb.region.firebasedatabase.app"
 
 // Device identity (unique per unit)
-#define DEVICE_ID       "vector_01"
+#define DEVICE_ID       "device_01"
 #define DEVICE_NAME     "Asset 01"
 
 // Timing
@@ -542,10 +545,10 @@ Your device should appear on the map within 10 seconds!
 
 ```javascript
 const FB_CONFIG = {
-  apiKey:      'AIzaSyAZiSKitF5KYCam6Lzmdc4pPlczLUQmQ_A',
-  authDomain:  'realtime-asset-tracking-e00df.firebaseapp.com',
-  databaseURL: 'https://realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app/',
-  projectId:   'realtime-asset-tracking-e00df',
+  apiKey:      'YOUR_API_KEY',  // From Firebase Console → Project Settings
+  authDomain:  'your-project.firebaseapp.com',
+  databaseURL: 'https://your-project-default-rtdb.region.firebasedatabase.app/',
+  projectId:   'your-project-id',
 };
 ```
 
@@ -749,12 +752,13 @@ npm run preview
 
 2. **Check Firebase connection**
    - Serial should show: `[INFO] Firebase connected!`
-   - Verify FIREBASE_HOST is correct
+   - Verify `FIREBASE_HOST` in firmware matches your Firebase project
+   - Make sure Firebase Realtime Database is enabled in Console
 
 3. **Check Firebase console**
-   - Go to Firebase Realtime DB
-   - Should see `/devices` branch with data
-   - If empty: Device not sending data
+   - Go to your Firebase Project → Realtime Database
+   - Should see `/devices` branch appearing with device data
+   - If empty: Device not sending data (check Wi-Fi & serial output)
 
 4. **Check dashboard console**
    - Press F12 → Console tab
