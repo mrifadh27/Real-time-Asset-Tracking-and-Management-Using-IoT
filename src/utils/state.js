@@ -6,33 +6,36 @@
 
 export const S = {
   /* ── Devices ── */
-  devices:   {},   // { [id]: Device }
+  devices:    {},    // { [id]: Device }
   selectedId: null,
-  history:   {},   // { [id]: Array<{speed, accel, ts}> }
+  history:    {},    // { [id]: Array<{speed, accel, ts}> }
 
   /* ── Per-device previous states (change detection) ── */
-  prevStatus:           {},  // { [id]: 'online'|'offline'|'idle' }
-  offlineAlertSent:     {},  // { [id]: boolean } — true = alert already fired for this offline state
-  onlineAlertSent:      {},  // { [id]: boolean } — true = alert already fired for this online state
-  lastStatusTransition: {},  // { [id]: timestamp } — track when state last transitioned
-  geofenceExitTracker:  {},  // { [id]: boolean } — true = device is currently outside
-  overspeedTracker:     {},  // { [id]: boolean } — true = currently over threshold
-  crashTracker:         {},  // { [id]: boolean } — true = currently in crash state
+  prevStatus:           {},  // { [id]: 'online'|'offline' } — undefined = never seen
+  offlineAlertSent:     {},  // { [id]: boolean }
+  onlineAlertSent:      {},  // { [id]: boolean }
+  lastStatusTransition: {},  // { [id]: timestamp }
+  geofenceExitTracker:  {},  // { [id]: boolean|undefined }
+  overspeedTracker:     {},  // { [id]: boolean }
+  crashTracker:         {},  // { [id]: boolean }
+
+  // Issue 1 FIX: track devices seen for first-connect online alert
+  knownDevices: new Set(),   // Set<id> — first time a device is ever seen
 
   /* ── Alerts ── */
-  localAlerts:    [],   // written instantly on every fireAlert()
-  firebaseAlerts: [],   // from Firebase listener
-  alerts:         [],   // merged + deduplicated display list
+  localAlerts:    [],
+  firebaseAlerts: [],
+  alerts:         [],
   alertFilter:    'all',
   alertUnread:    0,
   totalAlerts:    0,
 
   /* ── Geofences ── */
-  geofences: {},  // { [id]: { lat, lng, radius, active, isSet, circle } }
+  geofences: {},
 
   /* ── Settings ── */
   settings: {
-    offlineTimeout:  90,  // ✅ INCREASED: 30s → 90s minimum before marking offline
+    offlineTimeout:  90,
     speedThreshold:  120,
     crashThreshold:  2.0,
     gfCooldown:      60,
@@ -44,15 +47,11 @@ export const S = {
 
   /* ── Playback ── */
   playback: {
-    playing:  false,
-    index:    0,
-    route:    [],
-    marker:   null,
-    polyline: null,
-    timer:    null,
+    playing: false, index: 0, route: [],
+    marker: null, polyline: null, timer: null,
   },
 
-  /* ── Navigation / OSRM route ── */
+  /* ── Navigation / OSRM ── */
   navRoute: {
     destLat: null, destLng: null, destName: '',
     line: null, lineFull: null, destMarker: null,
@@ -60,19 +59,18 @@ export const S = {
   },
 
   /* ── Offline ── */
-  offlineQueue:  {},   // { [id]: Array<record> }
-  offlineTimers: {},   // { [id]: timeoutId }
+  offlineQueue:  {},
+  offlineTimers: {},
   isOffline:     false,
 
   /* ── Session analytics ── */
-  tripStart:       {},  // { [id]: timestamp }
-  maxSpeed:        {},  // { [id]: number }
+  tripStart:       {},
+  maxSpeed:        {},
   firstDeviceSeen: false,
 };
 
-/** Map-layer references (Leaflet objects, not plain data). */
 export const mapLayers = {
-  markers:  {},  // { [id]: L.Marker }
-  trails:   {},  // { [id]: L.Polyline }
-  routePts: {},  // { [id]: Array<[lat,lng]> }
+  markers:  {},
+  trails:   {},
+  routePts: {},
 };
