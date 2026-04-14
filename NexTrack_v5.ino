@@ -70,11 +70,12 @@
 //  ①  USER CONFIGURATION — EDIT THESE
 // ════════════════════════════════════════════════════════════
 
-#define WIFI_SSID        "Dialog 4G 001"
-#define WIFI_PASSWORD    "22c9E2DF"
+#define WIFI_SSID        "YOUR_WIFI_NAME"       // ← your Wi-Fi network name
+#define WIFI_PASSWORD    "YOUR_WIFI_PASSWORD"   // ← your Wi-Fi password
 
 // Firebase Realtime Database host (no "https://" prefix)
-#define FIREBASE_HOST    "realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app"
+#define FIREBASE_HOST    "your-project-default-rtdb.REGION.firebasedatabase.app"
+//                        ↑ copy from Firebase Console → Realtime Database → Data tab (without https://)
 
 // ─────────────────────────────────────────────────────────
 // FIREBASE DATABASE SECRET  ← THIS FIXES THE 401 ERROR
@@ -88,6 +89,7 @@
 // Paste your secret between the quotes below.
 // ─────────────────────────────────────────────────────────
 #define FIREBASE_SECRET  "YOUR_DATABASE_SECRET_HERE"
+//                        ↑ from Project Settings → Service Accounts → Database secrets
 
 // Device identity (unique per tracker unit)
 #define DEVICE_ID        "vector_01"
@@ -95,7 +97,7 @@
 
 // NTP — Sri Lanka is UTC+5:30 = 19800 seconds
 #define NTP_SERVER       "pool.ntp.org"
-#define NTP_GMT_OFFSET    19800
+#define NTP_GMT_OFFSET    19800 // ← adjust for your timezone
 #define NTP_DST_OFFSET    0
 
 // ════════════════════════════════════════════════════════════
