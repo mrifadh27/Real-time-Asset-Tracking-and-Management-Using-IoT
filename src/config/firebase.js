@@ -9,16 +9,15 @@
 /* global firebase */
 const firebase = window.firebase; // eslint-disable-line no-undef
 
-// ─── Firebase Config ──────────────────────────────────────────────────────────
+// src/config/firebase.js  — REPLACE THIS ENTIRE BLOCK
 const firebaseConfig = {
-  apiKey:            "AIzaSyAZiSKitF5KYCam6Lzmdc4pPlczlUQmQ_A",
-  authDomain:        "realtime-asset-tracking-e00df.firebaseapp.com",
-  databaseURL:       "https://realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "realtime-asset-tracking-e00df",
-  storageBucket:     "realtime-asset-tracking-e00df.firebasestorage.app",
-  messagingSenderId: "31947578320",
-  appId:             "1:31947578320:web:79d7290b0934ded454b7d5",
-  measurementId:     "G-MG7YJTME6B"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.REGION.firebasedatabase.app",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID",
 };
 
 // ─── Initialize ───────────────────────────────────────────────────────────────
