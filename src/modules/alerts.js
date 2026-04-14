@@ -1,16 +1,24 @@
 /**
  * src/modules/alerts.js
  *
- * FIXES:
- *  ✅ geofence_enter cooldown now uses S.settings.gfCooldown (same as geofence exit)
- *     — prevents flooding when device bounces on the geofence boundary
- *  ✅ clearAllAlerts() now calls updateAlertBadge() — badge clears immediately
- *  ✅ markAllRead() now calls updateAlertBadge() — badge clears immediately
- *  ✅ fireAlert() emits EV.ALERT_FIRED with { alert, immediate:true } flag
- *     so main.js can refresh the alert list without waiting for Firebase round-trip
+ * ROOT CAUSE FIX — Geofence repeat-trigger bug:
+ *
+ *   BEFORE: both 'geofence' (exit) and 'geofence_enter' used gfCooldown (60s).
+ *   After an enter, _cooldowns['id_geofence_enter'] was set. When the device
+ *   exited and re-entered within 60s, the cooldown blocked the second enter.
+ *
+ *   FIX: When a geofence EXIT fires  → delete the enter-cooldown key.
+ *        When a geofence ENTER fires → delete the exit-cooldown key.
+ *   This means direction-changes ALWAYS break through (correct behaviour).
+ *   The gfCooldown still throttles rapid same-direction jitter (device
+ *   bouncing right on the boundary edge) but never blocks real transitions.
+ *
+ * OTHER FIXES RETAINED:
+ *  ✅ clearAllAlerts() / markAllRead() emit EV.ALERT_FIRED for immediate UI update
  *  ✅ processAlertsSnapshot() null/exists guards
  *  ✅ pushRecord() errors caught silently
- *  ✅ _cooldowns capped at 500 entries
+ *  ✅ _cooldowns capped at 500 entries (memory safety)
+ *  ✅ updateAlertBadge() updates tab title
  */
 
 import { S }              from '../utils/state.js';
@@ -20,6 +28,7 @@ import { pushRecord }     from '../config/firebase.js';
 import { emit, EV }       from '../utils/events.js';
 import { fireNotification, updateTabTitle } from './notifications.js';
 
+/* ─── Alert type config ─── */
 export const ALERT_CONFIG = {
   offline:       { icon:'⚫', level:'info',    label:'Went Offline',    group:'offline',  resolved:false },
   online:        { icon:'🟢', level:'success',  label:'Back Online',     group:'offline',  resolved:true  },
@@ -41,12 +50,18 @@ export const FILTER_GROUPS = {
   sync:     ['sync'],
 };
 
-const BLOCKED   = new Set(['theft', 'accident']);
-const COOLDOWNS = {
+const BLOCKED = new Set(['theft', 'accident']);
+
+/**
+ * Base cooldown per type (ms).
+ * geofence / geofence_enter use null → resolved dynamically via S.settings.gfCooldown.
+ * But crucially, the opposite-direction key is always cleared on transition (see below).
+ */
+const BASE_COOLDOWNS = {
   offline:        60_000,
   online:         60_000,
-  geofence:       null,   // uses S.settings.gfCooldown (see fireAlert)
-  geofence_enter: null,   // ✅ FIX: also uses S.settings.gfCooldown (was hardcoded 10s)
+  geofence:       null,    // uses S.settings.gfCooldown
+  geofence_enter: null,    // uses S.settings.gfCooldown (same-direction throttle only)
   speed:          30_000,
   speed_normal:   30_000,
   crash:          10_000,
@@ -60,35 +75,48 @@ const _cooldowns = {};
 function _pruneCooldowns() {
   const keys = Object.keys(_cooldowns);
   if (keys.length <= MAX_COOLDOWN_ENTRIES) return;
-  keys.sort((a,b) => _cooldowns[a]-_cooldowns[b])
+  keys.sort((a, b) => _cooldowns[a] - _cooldowns[b])
       .slice(0, keys.length - MAX_COOLDOWN_ENTRIES)
       .forEach(k => delete _cooldowns[k]);
 }
 
-/* ─────────────────────────────────────────
+/* ═════════════════════════════════════════════════════
    FIRE ALERT
-───────────────────────────────────────── */
+   ————————————————————————————————————————————————————
+   Key logic for geofence repeats:
+   • Same-direction cooldown:  prevents jitter on boundary edge
+   • Cross-direction reset:    exit clears enter-cooldown, enter clears exit-cooldown
+     → every real transition always fires, no matter the timing
+═════════════════════════════════════════════════════ */
 export function fireAlert(deviceId, type, message, devName) {
   if (BLOCKED.has(type) || !ALERT_CONFIG[type]) return;
 
-  const key    = `${deviceId}_${type}`;
   const now    = Date.now();
+  const key    = `${deviceId}_${type}`;
 
-  // ✅ FIX: both geofence types use gfCooldown setting
-  const useGfCooldown = (type === 'geofence' || type === 'geofence_enter');
-  const coolMs = useGfCooldown
+  // Resolve cooldown for this type
+  const isGfType = (type === 'geofence' || type === 'geofence_enter');
+  const coolMs   = isGfType
     ? (S.settings.gfCooldown * 1000)
-    : (COOLDOWNS[type] ?? 30_000);
+    : (BASE_COOLDOWNS[type] ?? 30_000);
 
+  // ── Cooldown check (same direction only) ──────────────────────────────────
   if (_cooldowns[key] && now - _cooldowns[key] < coolMs) return;
   _cooldowns[key] = now;
+
+  // ✅ GEOFENCE REPEAT FIX — cross-direction cooldown reset
+  // When exit fires → clear enter cooldown so next re-entry always triggers
+  // When enter fires → clear exit cooldown so next re-exit always triggers
+  if (type === 'geofence')       delete _cooldowns[`${deviceId}_geofence_enter`];
+  if (type === 'geofence_enter') delete _cooldowns[`${deviceId}_geofence`];
+
   _pruneCooldowns();
 
   const name = devName || S.devices[deviceId]?.name || deviceId;
   const cfg  = ALERT_CONFIG[type];
 
   const alertObj = {
-    id:        `local_${now}_${Math.random().toString(36).slice(2,8)}`,
+    id:        `local_${now}_${Math.random().toString(36).slice(2, 8)}`,
     deviceId,  deviceName: name, type,
     group:     cfg.group,
     resolved:  cfg.resolved,
@@ -102,7 +130,7 @@ export function fireAlert(deviceId, type, message, devName) {
   S.localAlerts.unshift(alertObj);
   if (S.localAlerts.length > 300) S.localAlerts.pop();
 
-  // Push to Firebase (async — don't block)
+  // Push to Firebase async — don't block alert rendering
   pushRecord('/alerts', {
     deviceId, deviceName: name, type, group: cfg.group,
     resolved: cfg.resolved, message,
@@ -118,15 +146,13 @@ export function fireAlert(deviceId, type, message, devName) {
   // Browser push notification + audio beep
   fireNotification(type, cfg.label, message);
 
-  // ✅ Emit with immediate flag so main.js can update UI without waiting for Firebase
+  // Emit immediately — main.js refreshes alert list without waiting for Firebase
   emit(EV.ALERT_FIRED, { alert: alertObj, immediate: true });
 
   showToast(cfg.level, `${cfg.icon} ${message}`);
 }
 
-/* ─────────────────────────────────────────
-   PROCESS FIREBASE SNAPSHOT
-───────────────────────────────────────── */
+/* ─── PROCESS FIREBASE SNAPSHOT ─── */
 export function processAlertsSnapshot(snap) {
   if (!snap || !snap.exists()) { S.firebaseAlerts = []; return; }
 
@@ -145,30 +171,27 @@ export function processAlertsSnapshot(snap) {
   }
 
   S.firebaseAlerts = list;
-  // Sync unread — use whichever is higher
+  // Use higher of local or Firebase unread count
   if (fbUnread > S.alertUnread) S.alertUnread = fbUnread;
   mergeAndRender();
 }
 
-/* ─────────────────────────────────────────
-   MERGE & DEDUPLICATE
-───────────────────────────────────────── */
+/* ─── MERGE & DEDUPLICATE ─── */
 export function mergeAndRender() {
   const seen = new Set();
   S.alerts = [...S.firebaseAlerts, ...S.localAlerts]
     .filter(a => {
       if (!a?.type || BLOCKED.has(a.type) || !ALERT_CONFIG[a.type]) return false;
+      // 2-second window dedup: prevents showing both local + Firebase copy
       const key = `${a.deviceId}_${a.type}_${Math.floor((a.timestamp || 0) / 2000)}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     })
-    .sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 }
 
-/* ─────────────────────────────────────────
-   FILTER HELPERS
-───────────────────────────────────────── */
+/* ─── FILTER HELPERS ─── */
 export function getFilteredAlerts(filter) {
   const types = FILTER_GROUPS[filter];
   return types ? S.alerts.filter(a => types.includes(a.type)) : S.alerts;
@@ -184,10 +207,7 @@ export function getFilterCounts() {
   return counts;
 }
 
-/* ─────────────────────────────────────────
-   CLEAR ALL
-   ✅ FIX: calls updateAlertBadge so badge clears immediately
-───────────────────────────────────────── */
+/* ─── CLEAR ALL ─── */
 export function clearAllAlerts() {
   S.localAlerts    = [];
   S.firebaseAlerts = [];
@@ -195,27 +215,20 @@ export function clearAllAlerts() {
   S.alertUnread    = 0;
   S.totalAlerts    = 0;
   updateTabTitle(0);
-  // Signal UI to update immediately
   emit(EV.ALERT_FIRED, { immediate: true, clear: true });
   showToast('info', '🗑️ Alert history cleared.');
 }
 
-/* ─────────────────────────────────────────
-   MARK ALL READ
-   ✅ FIX: calls updateAlertBadge so badge clears immediately
-───────────────────────────────────────── */
+/* ─── MARK ALL READ ─── */
 export function markAllRead() {
   S.alertUnread = 0;
-  S.alerts.forEach(a     => { a.read = true; });
+  S.alerts.forEach(a      => { a.read = true; });
   S.localAlerts.forEach(a => { a.read = true; });
   updateTabTitle(0);
-  // Signal UI to update immediately
   emit(EV.ALERT_FIRED, { immediate: true, markRead: true });
 }
 
-/* ─────────────────────────────────────────
-   TIMESTAMP REFRESH (called every 60s)
-───────────────────────────────────────── */
+/* ─── TIMESTAMP REFRESH (every 60s) ─── */
 export function refreshTimestamps() {
   const el = document.getElementById('alert-list');
   if (!el) return;
@@ -225,9 +238,7 @@ export function refreshTimestamps() {
   });
 }
 
-/* ─────────────────────────────────────────
-   RENDER ALERT LIST
-───────────────────────────────────────── */
+/* ─── RENDER ALERT LIST ─── */
 export function renderAlertList() {
   const el = document.getElementById('alert-list');
   if (!el) return;
@@ -242,11 +253,11 @@ export function renderAlertList() {
   }
 
   el.innerHTML = list.map(a => {
-    const cfg = ALERT_CONFIG[a.type] || { icon:'⚠️', group:'offline', resolved:false, label:'Alert' };
-    const lat = parseFloat(a.lat), lng = parseFloat(a.lng);
-    const locStr = (isFinite(lat) && lat !== 0)
+    const cfg       = ALERT_CONFIG[a.type] || { icon:'⚠️', group:'offline', resolved:false, label:'Alert' };
+    const lat       = parseFloat(a.lat), lng = parseFloat(a.lng);
+    const locStr    = (isFinite(lat) && lat !== 0)
       ? `<span>📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</span>` : '';
-    const resolvedTag = cfg.resolved ? `<span class="alert-resolved-tag">✓ resolved</span>` : '';
+    const resTag    = cfg.resolved ? `<span class="alert-resolved-tag">✓ resolved</span>` : '';
     return `
     <div class="alert-item type-${a.type}${cfg.resolved ? ' resolved' : ''}">
       <div class="alert-icon grp-${cfg.group}">${cfg.icon}</div>
@@ -255,7 +266,7 @@ export function renderAlertList() {
         <div class="alert-meta">
           <span>📟 ${a.deviceName || a.deviceId || 'Unknown'}</span>
           <span data-ts="${a.timestamp || ''}">🕒 ${relativeTime(a.timestamp)}</span>
-          ${locStr}${resolvedTag}
+          ${locStr}${resTag}
         </div>
       </div>
       <span class="alert-badge badge-${a.type}">${cfg.label}</span>
@@ -263,9 +274,7 @@ export function renderAlertList() {
   }).join('');
 }
 
-/* ─────────────────────────────────────────
-   UPDATE FILTER BADGES
-───────────────────────────────────────── */
+/* ─── UPDATE FILTER BADGES ─── */
 export function updateFilterBadges() {
   const counts = getFilterCounts();
   Object.entries(FILTER_GROUPS).forEach(([key]) => {
@@ -278,9 +287,7 @@ export function updateFilterBadges() {
   });
 }
 
-/* ─────────────────────────────────────────
-   UPDATE ALERT NAV BADGE
-───────────────────────────────────────── */
+/* ─── UPDATE ALERT NAV BADGE ─── */
 export function updateAlertBadge() {
   const badge = document.getElementById('alert-badge');
   if (!badge) return;
