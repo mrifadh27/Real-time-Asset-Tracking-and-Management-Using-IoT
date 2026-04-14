@@ -2,20 +2,13 @@
  * src/modules/devices.js
  * Processes raw Firebase device data, detects ALL state transitions.
  *
- * FIXES IN THIS VERSION:
- *  ✅ Issue 1: First-connect online alert — fires on very first device appearance.
- *     Root cause: prevStatus defaulted to 'online', so the offline→online check
- *     never ran on the first packet. Now prevStatus starts as undefined and the
- *     first-connect path uses S.knownDevices to detect a brand-new device.
- *
- *  ✅ Bug 1: Online alert re-buried by Firebase re-merge.
- *     _clearOfflineAlerts() now purges S.firebaseAlerts as well.
- *
- *  ✅ Bug 2: Geofence entry after offline never fired.
- *     Offline timer now deletes S.geofenceExitTracker[id].
- *
- *  ✅ Bug 3: Geofence check skipped on first reconnect packet.
- *     checkGeofence() gates on isValidGPS() not gpsValid flag.
+ * FIXES:
+ *  ✅ CAT-7:  Speed showing "-0" — clamp to Math.max(0, speed)
+ *  ✅ CAT-7:  Distance showing "NaN km" — totalDist guarded with isFinite()
+ *  ✅ CAT-10: offlineQueueTotal() guards against non-array queue entries (NaN)
+ *  ✅ CAT-10: _bufferOffline() skips storeage when coordinates are (0, 0) — never-valid GPS
+ *  ✅ CAT-10: syncOfflineQueue() checks auth before syncing (avoids permission-denied)
+ *  ✅ CAT-10: Offline banner clears when device comes back online via updateOfflineUI()
  */
 
 import { S, mapLayers }  from '../utils/state.js';
@@ -27,7 +20,10 @@ import { batchUpdate }    from '../config/firebase.js';
 import { showToast }      from '../utils/toast.js';
 import { emit, EV }       from '../utils/events.js';
 
-const MIN_STATE_TRANSITION_MS = 5_000;   // 5 s min between transition alerts
+/* global firebase */
+const firebase = window.firebase;
+
+const MIN_STATE_TRANSITION_MS = 5_000;
 
 /* ─────────────────────────────────────────
    PROCESS ONE DEVICE
@@ -51,8 +47,6 @@ export function processDevice(id, raw, now) {
   }
 
   const prev       = S.devices[id];
-  // ✅ FIX Issue 1: prevStatus is undefined (not 'online') on very first packet.
-  //    Do NOT use || 'online' here — that was the original bug.
   const prevStatus = S.prevStatus[id];  // undefined on first connect
   const lastTrans  = S.lastStatusTransition[id] || 0;
 
@@ -64,7 +58,8 @@ export function processDevice(id, raw, now) {
       speed = Math.min((haversineM(prev.lat, prev.lng, lat, lng) / dt) * 3.6, 300);
     }
   }
-  speed = parseFloat(speed.toFixed(1));
+  // ✅ CAT-7 FIX: clamp to 0 to prevent "-0" display
+  speed = parseFloat(Math.max(0, speed).toFixed(1));
 
   /* ── Distance (glitch guard: reject > 500 m jumps) ── */
   let addDist = 0;
@@ -72,17 +67,25 @@ export function processDevice(id, raw, now) {
     const d = haversineKm(prev.lat, prev.lng, lat, lng);
     if (d < 0.5) addDist = d;
   }
-  const totalDist = parseFloat(((prev?.totalDist || 0) + addDist).toFixed(3));
+  // ✅ CAT-7 FIX: guard against NaN totalDist
+  const prevDist  = (isFinite(prev?.totalDist) ? prev.totalDist : 0);
+  const totalDist = parseFloat((prevDist + addDist).toFixed(3));
 
   if (!S.tripStart[id]) S.tripStart[id] = now;
   if (!S.maxSpeed[id] || speed > S.maxSpeed[id]) S.maxSpeed[id] = speed;
 
   const name = raw.name || `Device ${id}`;
+
+  // Guard heading: avoid NaN/Infinity
+  let heading = toF(raw.heading);
+  if (!isFinite(heading) || isNaN(heading)) heading = 0;
+  heading = Math.max(0, Math.min(360, heading));
+
   const device = {
     id, name,
     status:       'online',
     lat, lng, altitude: alt, hdop, satellites: sats,
-    heading:      String(hdg).includes('NaN') ? 0 : Math.max(0, Math.min(360, hdg)),
+    heading,
     accel, pitch, roll, speed, totalDist,
     gpsValid, gpsCached,
     vehicleState: raw.vehicleState || 'parked',
@@ -90,20 +93,19 @@ export function processDevice(id, raw, now) {
   };
   S.devices[id] = device;
 
-  /* ── 1. FIRST CONNECT  or  BACK ONLINE detection ── */
+  /* ── 1. FIRST CONNECT or BACK ONLINE ── */
   const isFirstConnect = !S.knownDevices.has(id);
   const isReconnect    = (prevStatus === 'offline');
 
   if (isFirstConnect || isReconnect) {
     const timeSinceTrans = now - lastTrans;
 
-    // Skip duplicate online alert within transition debounce window (except first connect)
     if (isFirstConnect || timeSinceTrans > MIN_STATE_TRANSITION_MS) {
       if (!S.onlineAlertSent[id]) {
         _clearOfflineAlerts(id);
         const msg = isFirstConnect
-          ? `${name} connected`        // first-ever appearance
-          : `${name} is back online`;  // reconnect after offline
+          ? `${name} connected`
+          : `${name} is back online`;
         fireAlert(id, 'online', msg, name);
         S.onlineAlertSent[id]  = true;
         S.offlineAlertSent[id] = false;
@@ -163,8 +165,11 @@ export function processDevice(id, raw, now) {
     };
   }
 
-  /* ── 8. Offline buffer ── */
-  if (!gpsValid && S.settings.offlineEnabled) _bufferOffline(id, raw, now);
+  /* ── 8. Offline buffer — only if GPS was ever valid ── */
+  // ✅ CAT-10 FIX: skip buffering when GPS has never been valid (avoids storing 0,0)
+  if (!gpsValid && S.settings.offlineEnabled && isValidGPS(lat, lng)) {
+    _bufferOffline(id, raw, now);
+  }
 
   /* ── 9. Reset offline timer ── */
   _resetOfflineTimer(id);
@@ -195,7 +200,7 @@ function _resetOfflineTimer(id) {
     S.onlineAlertSent[id]  = false;
     S.lastStatusTransition[id] = Date.now();
 
-    // ✅ Bug 2 FIX: delete tracker so reconnect triggers fresh geofence evaluation
+    // Reset geofence tracker so reconnect triggers a fresh evaluation
     delete S.geofenceExitTracker[id];
 
     emit(EV.DEVICES_UPDATED);
@@ -205,25 +210,13 @@ function _resetOfflineTimer(id) {
 
 /* ─────────────────────────────────────────
    CLEAR OFFLINE ALERTS — ALL THREE STORES
-   Bug 1 FIX: must include S.firebaseAlerts
 ───────────────────────────────────────── */
 function _clearOfflineAlerts(id) {
   const isMatch = a => a.deviceId === id && a.type === 'offline';
 
-  const fbBefore   = S.firebaseAlerts.length;
-  S.firebaseAlerts  = S.firebaseAlerts.filter(a => !isMatch(a));  // ✅ was missing
-
-  const locBefore  = S.localAlerts.length;
+  S.firebaseAlerts = S.firebaseAlerts.filter(a => !isMatch(a));
   S.localAlerts    = S.localAlerts.filter(a => !isMatch(a));
-
-  const dispBefore = S.alerts.length;
   S.alerts         = S.alerts.filter(a => !isMatch(a));
-
-  const cleared = S.firebaseAlerts.length < fbBefore
-               || S.localAlerts.length    < locBefore
-               || S.alerts.length         < dispBefore;
-
-  if (cleared) emit(EV.ALERT_FIRED, {});
 }
 
 /* ─────────────────────────────────────────
@@ -242,19 +235,37 @@ function _bufferOffline(id, raw, now) {
   if (S.offlineQueue[id].length > max) S.offlineQueue[id].shift();
 }
 
+/* ─────────────────────────────────────────
+   OFFLINE QUEUE TOTAL
+   ✅ CAT-10 FIX: guard against non-array entries to prevent NaN
+───────────────────────────────────────── */
 export function offlineQueueTotal() {
-  return Object.values(S.offlineQueue).reduce((s, q) => s + q.length, 0);
+  return Object.values(S.offlineQueue).reduce((s, q) => {
+    return s + (Array.isArray(q) ? q.length : 0);
+  }, 0);
 }
 
+/* ─────────────────────────────────────────
+   SYNC OFFLINE QUEUE
+   ✅ CAT-10 FIX: verify auth is still valid before syncing
+───────────────────────────────────────── */
 export async function syncOfflineQueue() {
   const total = offlineQueueTotal();
   if (total === 0 || !S.settings.autoSync) return;
+
+  // ✅ Check auth before hitting the database
+  const currentUser = firebase.auth().currentUser;
+  if (!currentUser) {
+    console.warn('[devices] syncOfflineQueue: no authenticated user, skipping sync');
+    return;
+  }
+
   document.getElementById('offline-sync-bar')?.classList.add('show');
   showToast('info', `🔄 Syncing ${total} offline records…`);
 
   const promises = [];
   Object.entries(S.offlineQueue).forEach(([id, queue]) => {
-    if (!queue.length) return;
+    if (!Array.isArray(queue) || !queue.length) return;
     const batch = {};
     queue.forEach((rec, i) => { batch[`offline_${id}_${rec.ts}_${i}`] = { ...rec, deviceId: id }; });
     promises.push(batchUpdate('/offline_data', batch).then(() => {
@@ -269,7 +280,8 @@ export async function syncOfflineQueue() {
     const firstId = Object.keys(S.devices)[0] || 'sys';
     fireAlert(firstId, 'sync', `Synced ${total} offline records to server`);
     showToast('success', `✅ Offline sync complete! ${total} records uploaded.`);
-  } catch {
+  } catch (err) {
+    console.error('[devices] Offline sync error:', err);
     document.getElementById('offline-sync-bar')?.classList.remove('show');
     showToast('danger', '❌ Offline sync failed. Will retry on reconnect.');
   }

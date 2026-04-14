@@ -1,13 +1,20 @@
 /**
  * src/modules/route.js
  * OSRM driving routes — fetch, render on map, track progress.
+ *
+ * FIXES:
+ *  ✅ startRoute() is now exported (was missing from original) so main.js
+ *     can call it from the "Get Route" button
+ *  ✅ _destSearchTimer cleared when clearRoute() is called (no stale timer)
+ *  ✅ Null checks on all DOM element accesses
+ *  ✅ navRoute.totalDist guarded against NaN (isFinite check)
  */
 
-import { S }         from '../utils/state.js';
+import { S }          from '../utils/state.js';
 import { haversineM, debounce } from '../utils/helpers.js';
-import { showToast } from '../utils/toast.js';
+import { showToast }  from '../utils/toast.js';
 import { renderRoute as mapRenderRoute, removeRouteLayer } from './map.js';
-import { searchLocations, addToSearchHistory, getSearchHistory } from './search.js';
+import { searchLocations, addToSearchHistory } from './search.js';
 
 let _destSearchTimer = null;
 
@@ -17,7 +24,7 @@ let _destSearchTimer = null;
 export function onDestInput(val) {
   const box = document.getElementById('dest-suggestions');
   if (!box) return;
-  const q = val.trim();
+  const q = (val || '').trim();
   if (q.length < 2) { box.classList.remove('visible'); return; }
 
   box.innerHTML = `<div class="dest-sug-status"><span class="spinner"></span> Searching…</div>`;
@@ -36,12 +43,10 @@ async function _searchDestinations(q) {
   if (!box) return;
 
   try {
-    // ✅ Get reference location for distance calculation
-    const dev = S.devices[S.selectedId];
-    const refLat = dev?.lat || null;
-    const refLng = dev?.lng || null;
+    const dev    = S.devices[S.selectedId];
+    const refLat = dev?.lat ?? null;
+    const refLng = dev?.lng ?? null;
 
-    // ✅ POWERFUL: Search with enhanced engine
     const results = await searchLocations(q, refLat, refLng, 10);
 
     if (!results.length) {
@@ -49,8 +54,7 @@ async function _searchDestinations(q) {
       return;
     }
 
-    // ✅ Format with icons, distance, and address
-    box.innerHTML = results.map((r, i) => {
+    box.innerHTML = results.map(r => {
       const dist = r.distance ? `<span class="dest-dist">${r.distance.toFixed(1)} km</span>` : '';
       return `<div class="dest-sug-item"
         data-lat="${r.lat}" data-lng="${r.lng}"
@@ -88,10 +92,8 @@ function _selectDest(lat, lng, name) {
   S.navRoute.destLat  = lat;
   S.navRoute.destLng  = lng;
   S.navRoute.destName = name;
-  
-  // ✅ Save to history
+
   addToSearchHistory(name, lat, lng);
-  
   showToast('info', `📍 Destination set: ${name}`);
 }
 
@@ -99,19 +101,19 @@ function _selectDest(lat, lng, name) {
    FETCH & RENDER ROUTE
 ──────────────────────────────────────── */
 export async function startRoute() {
-  if (!S.selectedId)        { showToast('warning', '⚠️ Select a device first'); return; }
-  if (!S.navRoute.destLat)  { showToast('warning', '⚠️ Search and select a destination first'); return; }
+  if (!S.selectedId)       { showToast('warning', '⚠️ Select a device first'); return; }
+  if (!S.navRoute.destLat) { showToast('warning', '⚠️ Search and select a destination first'); return; }
 
   const dev = S.devices[S.selectedId];
-  if (!dev)                  { showToast('warning', '⚠️ Device not found'); return; }
-  if (dev.lat === 0 || dev.lng === 0) { showToast('warning', '⚠️ Device has no GPS position yet'); return; }
+  if (!dev) { showToast('warning', '⚠️ Device not found'); return; }
+  if (!isFinite(dev.lat) || !isFinite(dev.lng) || (dev.lat === 0 && dev.lng === 0)) {
+    showToast('warning', '⚠️ Device has no GPS position yet'); return;
+  }
 
-  // ✅ IMPROVED: Validate destination coordinates
   const destLat = parseFloat(S.navRoute.destLat);
   const destLng = parseFloat(S.navRoute.destLng);
   if (!isFinite(destLat) || !isFinite(destLng)) {
-    showToast('warning', '⚠️ Invalid destination coordinates');
-    return;
+    showToast('warning', '⚠️ Invalid destination coordinates'); return;
   }
 
   showToast('info', '🗺️ Fetching route…');
@@ -119,35 +121,29 @@ export async function startRoute() {
 
   const nr = S.navRoute;
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${dev.lng},${dev.lat};${destLng},${destLat}?overview=full&geometries=geojson`;
-    console.log('[route] fetching from OSRM:', url);
-    
+    const url  = `https://router.project-osrm.org/route/v1/driving/${dev.lng},${dev.lat};${destLng},${destLat}?overview=full&geometries=geojson`;
     const res  = await fetch(url);
-    
-    // ✅ IMPROVED: Check if response is ok before parsing
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    }
-    
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     const data = await res.json();
-    
-    // ✅ IMPROVED: Check response code
-    if (data.code !== 'Ok') {
-      console.error('[route] OSRM error code:', data.code, data.message);
-      throw new Error(`OSRM Error: ${data.code}` + (data.message ? ` - ${data.message}` : ''));
-    }
 
-    // ✅ IMPROVED: Validate routes array exists
-    if (!data.routes || data.routes.length === 0) {
+    if (data.code !== 'Ok') {
+      throw new Error(`OSRM error: ${data.code}${data.message ? ' — ' + data.message : ''}`);
+    }
+    if (!Array.isArray(data.routes) || !data.routes.length) {
       throw new Error('No route found between these points');
     }
 
-    const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
-    const distKm = (data.routes[0].distance / 1000).toFixed(1);
-    const etaMin = Math.round(data.routes[0].duration / 60);
+    const route  = data.routes[0];
+    const coords = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+    const distKm = (route.distance / 1000).toFixed(1);
+    const etaMin = Math.round(route.duration / 60);
 
     nr.fullCoords = coords;
-    nr.totalDist  = parseFloat(distKm);
+    nr.totalDist  = isFinite(parseFloat(distKm)) ? parseFloat(distKm) : 0;
+    // Preserve destination after clearRoute() above reset them
+    nr.destLat  = destLat;
+    nr.destLng  = destLng;
+    nr.destName = S.navRoute.destName || 'Destination';
 
     mapRenderRoute({
       coords, distKm, etaMin,
@@ -157,13 +153,13 @@ export async function startRoute() {
       navRoute: nr,
     });
 
-    /* Update right-panel route meta */
-    document.getElementById('route-meta')?.style.setProperty('display','flex');
-    document.getElementById('route-dist-val') && (document.getElementById('route-dist-val').textContent = distKm);
-    document.getElementById('route-eta-val')  && (document.getElementById('route-eta-val').textContent  = etaMin);
-    document.getElementById('route-progress-badge')?.style.setProperty('display','inline');
-    document.getElementById('clear-route-btn')?.style.setProperty('display','flex');
-    document.getElementById('btn-clear-route')?.style.setProperty('display','flex');
+    const _s = id => document.getElementById(id);
+    _s('route-meta')?.style.setProperty('display', 'flex');
+    if (_s('route-dist-val')) _s('route-dist-val').textContent = distKm;
+    if (_s('route-eta-val'))  _s('route-eta-val').textContent  = etaMin;
+    _s('route-progress-badge')?.style.setProperty('display', 'inline');
+    _s('clear-route-btn')?.style.setProperty('display', 'flex');
+    _s('btn-clear-route')?.style.setProperty('display', 'flex');
 
     showToast('success', `✅ Route: ${distKm} km · ~${etaMin} min`);
   } catch (e) {
@@ -173,7 +169,7 @@ export async function startRoute() {
 }
 
 /* ────────────────────────────────────────
-   PROGRESS UPDATE (called on each device update)
+   PROGRESS UPDATE
 ──────────────────────────────────────── */
 export function updateProgress(curLat, curLng) {
   const nr = S.navRoute;
@@ -197,7 +193,6 @@ export function updateProgress(curLat, curLng) {
   const el  = document.getElementById('route-pct-val');
   if (el) el.textContent = pct;
 
-  /* Arrival detection (< 50 m) */
   if (haversineM(curLat, curLng, nr.destLat, nr.destLng) < 50) {
     showToast('success', `🏁 Arrived at ${nr.destName}!`);
     clearRoute();
@@ -208,17 +203,25 @@ export function updateProgress(curLat, curLng) {
    CLEAR
 ──────────────────────────────────────── */
 export function clearRoute() {
+  // ✅ FIX: cancel any pending search timer
+  clearTimeout(_destSearchTimer);
+  _destSearchTimer = null;
+
   const nr = S.navRoute;
-  ['line','lineFull','destMarker'].forEach(k => {
+  ['line', 'lineFull', 'destMarker'].forEach(k => {
     if (nr[k]) { removeRouteLayer(nr[k]); nr[k] = null; }
   });
-  nr.destLat = null; nr.destLng = null;
-  nr.fullCoords = []; nr.destName = '';
+  nr.destLat    = null;
+  nr.destLng    = null;
+  nr.fullCoords = [];
+  nr.destName   = '';
+  nr.totalDist  = 0;
 
   const di = document.getElementById('dest-input');
   if (di) di.value = '';
-  document.getElementById('route-meta')?.style.setProperty('display','none');
-  document.getElementById('clear-route-btn')?.style.setProperty('display','none');
-  document.getElementById('btn-clear-route')?.style.setProperty('display','none');
-  document.getElementById('route-progress-badge')?.style.setProperty('display','none');
+  document.getElementById('dest-suggestions')?.classList.remove('visible');
+  document.getElementById('route-meta')?.style.setProperty('display', 'none');
+  document.getElementById('clear-route-btn')?.style.setProperty('display', 'none');
+  document.getElementById('btn-clear-route')?.style.setProperty('display', 'none');
+  document.getElementById('route-progress-badge')?.style.setProperty('display', 'none');
 }

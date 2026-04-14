@@ -1,6 +1,11 @@
 /**
  * src/modules/analytics.js
  * All Chart.js charts: speed, activity, device-distance, mini-speed.
+ *
+ * FIXES:
+ *  ✅ CAT-8: destroyCharts() exported — called on logout to release Chart.js registrations
+ *  ✅ CAT-8: initCharts() destroys any existing instances before creating new ones,
+ *     preventing "Canvas is already in use" errors on re-login
  */
 
 import { S } from '../utils/state.js';
@@ -9,13 +14,29 @@ import { $ }  from '../utils/helpers.js';
 const charts = {};
 
 /* ────────────────────────────────────────
+   DESTROY (call on logout)
+──────────────────────────────────────── */
+export function destroyCharts() {
+  Object.entries(charts).forEach(([key, chart]) => {
+    try { chart?.destroy(); } catch (_) {}
+    delete charts[key];
+  });
+}
+
+/* ────────────────────────────────────────
    INIT
 ──────────────────────────────────────── */
 export function initCharts() {
+  // ✅ CAT-8 FIX: destroy any existing charts before re-initialising.
+  // After logout+login, the app HTML is replaced so canvas DOM nodes are new,
+  // but Chart.js's internal registry still holds the old instances.
+  destroyCharts();
+
   const dark    = document.documentElement.getAttribute('data-theme') === 'dark';
   const textCol = dark ? '#7A8FAD' : '#4A6080';
   const gridCol = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
   const Chart   = window.Chart;
+  if (!Chart) { console.warn('[analytics] Chart.js not loaded'); return; }
 
   const base = (extra = {}) => ({
     responsive: true, maintainAspectRatio: false,
@@ -30,53 +51,65 @@ export function initCharts() {
          title:{ display:!!yLabel, text:yLabel, color:textCol } },
   });
 
-  charts.speed = new Chart($('speed-chart'), {
-    type: 'line',
-    data: { labels:[], datasets:[{
-      label:'Speed km/h', data:[],
-      borderColor:'#00E5FF', backgroundColor:'rgba(0,229,255,0.08)',
-      borderWidth:2, fill:true, tension:0.4,
-      pointRadius:2, pointBackgroundColor:'#00E5FF',
-    }]},
-    options: { ...base(), scales:axes('km/h') },
-  });
+  const speedCanvas = $('speed-chart');
+  if (speedCanvas) {
+    charts.speed = new Chart(speedCanvas, {
+      type: 'line',
+      data: { labels:[], datasets:[{
+        label:'Speed km/h', data:[],
+        borderColor:'#00E5FF', backgroundColor:'rgba(0,229,255,0.08)',
+        borderWidth:2, fill:true, tension:0.4,
+        pointRadius:2, pointBackgroundColor:'#00E5FF',
+      }]},
+      options: { ...base(), scales:axes('km/h') },
+    });
+  }
 
-  charts.activity = new Chart($('activity-chart'), {
-    type: 'bar',
-    data: {
-      labels: Array.from({ length:12 }, (_, i) => `${-(11-i)}m`),
-      datasets: [{
-        data: Array(12).fill(0),
-        backgroundColor:'rgba(0,229,255,0.35)',
-        borderColor:'rgba(0,229,255,0.7)',
-        borderWidth:1, borderRadius:4,
-      }],
-    },
-    options: { ...base(), scales:axes() },
-  });
+  const activityCanvas = $('activity-chart');
+  if (activityCanvas) {
+    charts.activity = new Chart(activityCanvas, {
+      type: 'bar',
+      data: {
+        labels: Array.from({ length:12 }, (_, i) => `${-(11-i)}m`),
+        datasets: [{
+          data: Array(12).fill(0),
+          backgroundColor:'rgba(0,229,255,0.35)',
+          borderColor:'rgba(0,229,255,0.7)',
+          borderWidth:1, borderRadius:4,
+        }],
+      },
+      options: { ...base(), scales:axes() },
+    });
+  }
 
-  charts.deviceDist = new Chart($('device-dist-chart'), {
-    type: 'bar',
-    data: { labels:[], datasets:[{
-      data:[],
-      backgroundColor:[
-        'rgba(0,229,255,0.5)','rgba(255,107,53,0.5)',
-        'rgba(0,217,126,0.5)','rgba(255,184,0,0.5)','rgba(255,59,92,0.5)',
-      ],
-      borderRadius:6,
-    }]},
-    options: { ...base(), scales:axes('km') },
-  });
+  const distCanvas = $('device-dist-chart');
+  if (distCanvas) {
+    charts.deviceDist = new Chart(distCanvas, {
+      type: 'bar',
+      data: { labels:[], datasets:[{
+        data:[],
+        backgroundColor:[
+          'rgba(0,229,255,0.5)','rgba(255,107,53,0.5)',
+          'rgba(0,217,126,0.5)','rgba(255,184,0,0.5)','rgba(255,59,92,0.5)',
+        ],
+        borderRadius:6,
+      }]},
+      options: { ...base(), scales:axes('km') },
+    });
+  }
 
-  charts.miniSpeed = new Chart($('mini-speed-chart'), {
-    type: 'line',
-    data: { labels:[], datasets:[{
-      data:[],
-      borderColor:'#00E5FF', backgroundColor:'rgba(0,229,255,0.1)',
-      borderWidth:1.5, fill:true, tension:0.4, pointRadius:0,
-    }]},
-    options: { ...base(), scales:{ x:{ display:false }, y:{ display:false, min:0 } } },
-  });
+  const miniCanvas = $('mini-speed-chart');
+  if (miniCanvas) {
+    charts.miniSpeed = new Chart(miniCanvas, {
+      type: 'line',
+      data: { labels:[], datasets:[{
+        data:[],
+        borderColor:'#00E5FF', backgroundColor:'rgba(0,229,255,0.1)',
+        borderWidth:1.5, fill:true, tension:0.4, pointRadius:0,
+      }]},
+      options: { ...base(), scales:{ x:{ display:false }, y:{ display:false, min:0 } } },
+    });
+  }
 }
 
 /* ────────────────────────────────────────
@@ -100,7 +133,8 @@ export function updateAnalytics() {
   }
 
   const totalDist = devs.reduce((s, d) => s + (d.totalDist || 0), 0);
-  const maxSpd    = Math.max(...Object.values(S.maxSpeed).map(Number).filter(n => !isNaN(n)), 0);
+  const speeds    = Object.values(S.maxSpeed).map(Number).filter(n => isFinite(n) && !isNaN(n));
+  const maxSpd    = speeds.length ? Math.max(...speeds) : 0;
 
   const e = id => document.getElementById(id);
   if (e('stat-distance')) e('stat-distance').textContent = totalDist.toFixed(2) + ' km';

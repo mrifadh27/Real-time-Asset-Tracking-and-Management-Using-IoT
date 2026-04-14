@@ -1,49 +1,54 @@
 /**
- * src/config/firebase.js
- * Firebase initialisation — exports the database reference and helpers.
+ * VECTOR — Firebase Configuration
+ * Uses the Firebase compat SDK loaded via CDN in index.html.
  */
 
-const FB_CONFIG = {
-  apiKey:      'AIzaSyAZiSKitF5KYCam6Lzmdc4pPlczLUQmQ_A',
-  authDomain:  'realtime-asset-tracking-e00df.firebaseapp.com',
-  databaseURL: 'https://realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app/',
-  projectId:   'realtime-asset-tracking-e00df',
+// ─── CDN Global Bridge ────────────────────────────────────────────────────────
+// Firebase is loaded via <script> CDN tags in index.html as window.firebase.
+// Declaring it here prevents Vite/esbuild "not declared" errors.
+/* global firebase */
+const firebase = window.firebase; // eslint-disable-line no-undef
+
+// ─── Firebase Config ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyAZiSKitF5KYCam6Lzmdc4pPlczlUQmQ_A",
+  authDomain:        "realtime-asset-tracking-e00df.firebaseapp.com",
+  databaseURL:       "https://realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "realtime-asset-tracking-e00df",
+  storageBucket:     "realtime-asset-tracking-e00df.firebasestorage.app",
+  messagingSenderId: "31947578320",
+  appId:             "1:31947578320:web:79d7290b0934ded454b7d5",
+  measurementId:     "G-MG7YJTME6B"
 };
 
-/* global firebase */
-if (!window.firebase.apps?.length) {
-  window.firebase.initializeApp(FB_CONFIG);
+// ─── Initialize ───────────────────────────────────────────────────────────────
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
 }
 
-export const db = window.firebase.database();
+// ─── Service Exports ──────────────────────────────────────────────────────────
+export const db   = firebase.database();
+export const auth = firebase.auth();
+export { firebase };
+
+// ─── Database Helpers (used by modules) ──────────────────────────────────────
 
 /**
- * Subscribe to a realtime path.
- * @param {string}   path
- * @param {Function} onValue
- * @param {Function} [onError]
- * @returns {Function} unsubscribe
+ * batchUpdate — write multiple key/value pairs atomically.
+ * Used by devices.js for offline queue sync.
+ * @param {string} path - e.g. '/offline_data'
+ * @param {Object} data - flat { key: value } object
  */
-export function subscribe(path, onValue, onError) {
-  const ref = db.ref(path);
-  ref.on('value', onValue, onError || console.error);
-  return () => ref.off('value', onValue);
+export function batchUpdate(path, data) {
+  return db.ref(path).update(data);
 }
 
 /**
- * Push a record to a path (non-blocking, returns Promise).
- * @param {string} path
- * @param {Object} data
+ * pushRecord — push a new record to a list path (auto-generates key).
+ * Used by alerts.js to write alerts to /alerts.
+ * @param {string} path - e.g. '/alerts'
+ * @param {Object} data - the record object
  */
 export function pushRecord(path, data) {
-  return db.ref(path).push(data).catch(e => console.warn('[FB push]', e));
-}
-
-/**
- * Batch-update a path.
- * @param {string} path
- * @param {Object} updates
- */
-export function batchUpdate(path, updates) {
-  return db.ref(path).update(updates).catch(e => console.warn('[FB batch]', e));
+  return db.ref(path).push(data);
 }

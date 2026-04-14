@@ -76,6 +76,19 @@
 // Firebase Realtime Database host (no "https://" prefix)
 #define FIREBASE_HOST    "realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app"
 
+// ─────────────────────────────────────────────────────────
+// FIREBASE DATABASE SECRET  ← THIS FIXES THE 401 ERROR
+//
+// HOW TO GET YOUR SECRET:
+//   1. Go to https://console.firebase.google.com
+//   2. Select your project → ⚙️ Project Settings
+//   3. Click "Service Accounts" tab
+//   4. Scroll down → "Database secrets" → Show → Copy
+//
+// Paste your secret between the quotes below.
+// ─────────────────────────────────────────────────────────
+#define FIREBASE_SECRET  "YOUR_DATABASE_SECRET_HERE"
+
 // Device identity (unique per tracker unit)
 #define DEVICE_ID        "vector_01"
 #define DEVICE_NAME      "Asset 01"
@@ -812,7 +825,9 @@ bool sendToFirebase(bool heartbeatOnly) {
   String payload;
   buildPayload(payload, heartbeatOnly, false, 0);
 
-  String path = String("/assets/") + DEVICE_ID + ".json";
+  // Append ?auth= so Firebase accepts the write without requiring
+  // a signed-in user. The database secret acts as a master write key.
+  String path = String("/assets/") + DEVICE_ID + ".json?auth=" + FIREBASE_SECRET;
   client.print(
     "PATCH " + path + " HTTP/1.1\r\n"
     "Host: " + FIREBASE_HOST + "\r\n"
@@ -963,7 +978,7 @@ void syncOfflineRecords() {
     serializeJson(pd, body);
 
     client.print(
-      "POST /offline_data.json HTTP/1.1\r\n"
+      "POST /offline_data.json?auth=" + String(FIREBASE_SECRET) + " HTTP/1.1\r\n"
       "Host: " + String(FIREBASE_HOST) + "\r\n"
       "Content-Type: application/json\r\n"
       "Content-Length: " + body.length() + "\r\n"
@@ -1053,9 +1068,28 @@ void blinkLed(int times, int ms) {
  *    6 rapid blinks           = Firebase upload failed → stored offline
  *    5 rapid blinks           = MPU6050 calibration complete
  *
- *  FIREBASE RULES (open for development — tighten before production):
+ *  FIREBASE DATABASE RULES  (paste into Firebase Console → Realtime Database → Rules)
+ *
+ *  The ESP32 writes to /assets and /offline_data using the Database Secret
+ *  (?auth=SECRET query param), so those paths allow unauthenticated writes.
+ *  The dashboard reads everything — it must be logged in (auth != null).
+ *  Alerts are written only by the dashboard (auth != null).
+ *
  *  {
- *    "rules": { ".read": true, ".write": true }
+ *    "rules": {
+ *      "assets": {
+ *        ".read":  "auth != null",
+ *        ".write": true
+ *      },
+ *      "alerts": {
+ *        ".read":  "auth != null",
+ *        ".write": "auth != null"
+ *      },
+ *      "offline_data": {
+ *        ".read":  "auth != null",
+ *        ".write": true
+ *      }
+ *    }
  *  }
  * ═══════════════════════════════════════════════════════════════════════════
  */

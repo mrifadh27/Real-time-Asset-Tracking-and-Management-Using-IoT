@@ -178,12 +178,175 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 
 .sidebar-footer { padding:16px; border-top:1px solid var(--border); }
 .user-row       { display:flex; align-items:center; gap:10px; padding:8px; border-radius:var(--r-sm); }
-.avatar-img {
-  width: 40px;
-  height: 35px;
-
-}
+.avatar-img { width:40px; height:35px; }
 .user-email { font-size:12px; color:var(--t2); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* ════════════════════════════════════════════
+   SIDEBAR — Admin Profile Footer
+════════════════════════════════════════════ */
+
+/* Override old footer padding — new section handles its own spacing */
+.sb-profile-footer {
+  padding: 0 !important;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Profile Row ── */
+.sb-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 8px;
+}
+
+/* ── Avatar Circle with Initials ── */
+.sb-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(0,229,255,0.13), rgba(0,229,255,0.27));
+  border: 1.5px solid #00E5FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(0,229,255,0.15);
+}
+
+.sb-avatar span {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #00E5FF;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+/* ── Name + Email Text ── */
+.sb-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-profile-name {
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t1);
+  line-height: 1.2;
+}
+
+.sb-profile-email {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--t2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* ── Online / Offline Status Pill ── */
+.sb-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px 10px;
+}
+
+.sb-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00D97E;
+  box-shadow: 0 0 6px rgba(0,217,126,0.5);
+  flex-shrink: 0;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.sb-status-text {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: #00D97E;
+  transition: color 0.3s ease;
+}
+
+/* ── Sign Out Button ── */
+.sb-signout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 28px);
+  margin: 2px 14px 14px;
+  height: 38px;
+  background: transparent;
+  border: 1px solid rgba(255, 59, 92, 0.35);
+  border-radius: 8px;
+  color: #FF3B5C;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.sb-signout-btn:hover:not(:disabled) {
+  background: rgba(255, 59, 92, 0.08);
+  border-color: #FF3B5C;
+  box-shadow: 0 0 12px rgba(255, 59, 92, 0.2);
+}
+
+.sb-signout-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.sb-signout-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Sign Out Spinner ── */
+.sb-signout-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 59, 92, 0.25);
+  border-top-color: #FF3B5C;
+  border-radius: 50%;
+  animation: sbSpinAnim 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes sbSpinAnim {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Collapsed Sidebar — show only avatar + icon ── */
+@media (max-width: 680px) {
+  .sb-profile-info,
+  .sb-status-pill,
+  .sb-signout-btn span#sb-signout-text {
+    display: none;
+  }
+  .sb-profile-row {
+    justify-content: center;
+    padding: 12px 14px 12px;
+  }
+  .sb-signout-btn {
+    width: 36px;
+    margin: 4px auto 12px;
+    padding: 0;
+    font-size: 16px;
+    border-radius: 50%;
+  }
+  .sb-signout-btn::before {
+    content: '🚪';
+  }
+}
+
 
 /* ════════════════════════════════════════════
    MAIN AREA
@@ -753,3 +916,62 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
   display: flex; align-items: center; gap: 8px;
 }
 .map-search-empty { padding: 12px 14px; font-size: 12px; color: var(--t3); text-align: center; }
+
+/* ════════════════════════════════════════════════════════════
+   PANEL GEOFENCE BUTTON  (inside right panel device card)
+════════════════════════════════════════════════════════════ */
+.panel-gf-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(0,229,255,0.07);
+  border: 1px solid rgba(0,229,255,0.35);
+  border-radius: var(--r-sm);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, transform .15s;
+  text-align: center;
+}
+.panel-gf-btn:hover:not(:disabled) {
+  background: rgba(0,229,255,0.14);
+  border-color: var(--accent);
+  transform: scale(1.01);
+}
+.panel-gf-btn.drawing {
+  background: rgba(255,59,92,0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════
+   DRAW-HINT OVERLAY IMPROVEMENTS
+════════════════════════════════════════════════════════════ */
+.draw-hint {
+  line-height: 1.6 !important;
+  max-width: 280px !important;
+}
+.draw-hint kbd {
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+/* ════════════════════════════════════════════════════════════
+   NOTIFICATION PERMISSION INDICATOR
+   (shown in topbar when notifications blocked)
+════════════════════════════════════════════════════════════ */
+.notif-blocked-hint {
+  font-size: 11px;
+  color: var(--warning);
+  padding: 3px 8px;
+  background: rgba(255,184,0,.1);
+  border-radius: 4px;
+  cursor: pointer;
+}

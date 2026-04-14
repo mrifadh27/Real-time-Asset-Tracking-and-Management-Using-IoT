@@ -1,26 +1,28 @@
 /**
  * src/utils/state.js
- * Central application state — imported by all modules.
- * No imports here to avoid circular dependencies.
+ * Central application state.
+ *
+ * FIXES:
+ *  ✅ resetState() — full session reset on logout (keeps settings)
+ *  ✅ resetMapLayers() — clears stale Leaflet refs
+ *  ✅ Added notifications + notificationSound to settings
  */
 
 export const S = {
   /* ── Devices ── */
-  devices:    {},    // { [id]: Device }
+  devices:    {},
   selectedId: null,
-  history:    {},    // { [id]: Array<{speed, accel, ts}> }
+  history:    {},
 
-  /* ── Per-device previous states (change detection) ── */
-  prevStatus:           {},  // { [id]: 'online'|'offline' } — undefined = never seen
-  offlineAlertSent:     {},  // { [id]: boolean }
-  onlineAlertSent:      {},  // { [id]: boolean }
-  lastStatusTransition: {},  // { [id]: timestamp }
-  geofenceExitTracker:  {},  // { [id]: boolean|undefined }
-  overspeedTracker:     {},  // { [id]: boolean }
-  crashTracker:         {},  // { [id]: boolean }
-
-  // Issue 1 FIX: track devices seen for first-connect online alert
-  knownDevices: new Set(),   // Set<id> — first time a device is ever seen
+  /* ── Per-device transition state ── */
+  prevStatus:           {},
+  offlineAlertSent:     {},
+  onlineAlertSent:      {},
+  lastStatusTransition: {},
+  geofenceExitTracker:  {},
+  overspeedTracker:     {},
+  crashTracker:         {},
+  knownDevices:         new Set(),
 
   /* ── Alerts ── */
   localAlerts:    [],
@@ -33,16 +35,18 @@ export const S = {
   /* ── Geofences ── */
   geofences: {},
 
-  /* ── Settings ── */
+  /* ── Settings (persisted to localStorage) ── */
   settings: {
-    offlineTimeout:  90,
-    speedThreshold:  120,
-    crashThreshold:  2.0,
-    gfCooldown:      60,
-    showTrail:       true,
-    offlineEnabled:  true,
-    autoSync:        true,
-    offlineBuffer:   200,
+    offlineTimeout:    90,
+    speedThreshold:    120,
+    crashThreshold:    2.0,
+    gfCooldown:        60,
+    showTrail:         true,
+    offlineEnabled:    true,
+    autoSync:          true,
+    offlineBuffer:     200,
+    notifications:     true,   // browser push notifications
+    notificationSound: true,   // audio beeps
   },
 
   /* ── Playback ── */
@@ -74,3 +78,63 @@ export const mapLayers = {
   trails:   {},
   routePts: {},
 };
+
+/* ─────────────────────────────────────────────────────────
+   RESET STATE — call on logout AFTER stopping all timers.
+───────────────────────────────────────────────────────── */
+export function resetState() {
+  S.devices    = {};
+  S.selectedId = null;
+  S.history    = {};
+
+  S.prevStatus           = {};
+  S.offlineAlertSent     = {};
+  S.onlineAlertSent      = {};
+  S.lastStatusTransition = {};
+  S.geofenceExitTracker  = {};
+  S.overspeedTracker     = {};
+  S.crashTracker         = {};
+  S.knownDevices         = new Set();
+
+  S.localAlerts    = [];
+  S.firebaseAlerts = [];
+  S.alerts         = [];
+  S.alertFilter    = 'all';
+  S.alertUnread    = 0;
+  S.totalAlerts    = 0;
+
+  S.geofences = {};
+
+  S.playback.playing  = false;
+  S.playback.index    = 0;
+  S.playback.route    = [];
+  S.playback.marker   = null;
+  S.playback.polyline = null;
+  S.playback.timer    = null;
+
+  S.navRoute.destLat    = null;
+  S.navRoute.destLng    = null;
+  S.navRoute.destName   = '';
+  S.navRoute.line       = null;
+  S.navRoute.lineFull   = null;
+  S.navRoute.destMarker = null;
+  S.navRoute.fullCoords = [];
+  S.navRoute.totalDist  = 0;
+
+  S.offlineQueue  = {};
+  S.offlineTimers = {};
+  S.isOffline     = false;
+
+  S.tripStart       = {};
+  S.maxSpeed        = {};
+  S.firstDeviceSeen = false;
+}
+
+/* ─────────────────────────────────────────────────────────
+   RESET MAP LAYERS
+───────────────────────────────────────────────────────── */
+export function resetMapLayers() {
+  mapLayers.markers  = {};
+  mapLayers.trails   = {};
+  mapLayers.routePts = {};
+}
