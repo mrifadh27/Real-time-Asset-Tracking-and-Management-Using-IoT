@@ -11,14 +11,14 @@ const firebase = window.firebase; // eslint-disable-line no-undef
 
 // ─── Firebase Config ──────────────────────────────────────────────────────────
 const firebaseConfig = {
-  apiKey:            "AIzaSyAZiSKitF5KYCam6Lzmdc4pPlczlUQmQ_A",
-  authDomain:        "realtime-asset-tracking-e00df.firebaseapp.com",
-  databaseURL:       "https://realtime-asset-tracking-e00df-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "realtime-asset-tracking-e00df",
-  storageBucket:     "realtime-asset-tracking-e00df.firebasestorage.app",
-  messagingSenderId: "31947578320",
-  appId:             "1:31947578320:web:79d7290b0934ded454b7d5",
-  measurementId:     "G-MG7YJTME6B"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // ─── Initialize ───────────────────────────────────────────────────────────────
