@@ -550,5 +550,3 @@ Issues and pull requests are welcome. When reporting a bug, please include:
 - Browser console errors (F12 → Console tab)
 
 ---
-
-*Built with ❤️ for reliable, real-time asset tracking.*
